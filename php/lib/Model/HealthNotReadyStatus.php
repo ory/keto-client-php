@@ -36,6 +36,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * HealthNotReadyStatus Class Doc Comment
  *
  * @category Class
+ * @description HealthNotReadyStatus health not ready status
  * @package  Ory\Keto\Client
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
