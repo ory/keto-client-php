@@ -36,7 +36,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * OryAccessControlPolicyRole Class Doc Comment
  *
  * @category Class
- * @description OryAccessControlPolicyRole oryAccessControlPolicyRole represents a group of users that share the same role. A role could be an administrator, a moderator, a regular user or some other sort of role.
+ * @description oryAccessControlPolicyRole represents a group of users that share the same role. A role could be an administrator, a moderator, a regular user or some other sort of role.
  * @package  Ory\Keto\Client
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
