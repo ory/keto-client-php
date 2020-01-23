@@ -36,6 +36,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * HealthStatus Class Doc Comment
  *
  * @category Class
+ * @description HealthStatus health status
  * @package  Ory\Keto\Client
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
