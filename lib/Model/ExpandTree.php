@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * ExpandTree
  *
  * PHP version 7.2
  *
@@ -33,7 +33,7 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * ExpandTree Class Doc Comment
  *
  * @category Class
  * @package  Ory\Keto\Client
@@ -43,7 +43,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class ExpandTree implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +52,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'expandTree';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,7 +60,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
-        'status' => 'string'
+        'children' => '\Ory\Keto\Client\Model\ExpandTree[]',
+        'subject' => 'string',
+        'type' => 'string'
     ];
 
     /**
@@ -71,7 +73,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'status' => null
+        'children' => null,
+        'subject' => null,
+        'type' => null
     ];
 
     /**
@@ -101,7 +105,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status'
+        'children' => 'children',
+        'subject' => 'subject',
+        'type' => 'type'
     ];
 
     /**
@@ -110,7 +116,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus'
+        'children' => 'setChildren',
+        'subject' => 'setSubject',
+        'type' => 'setType'
     ];
 
     /**
@@ -119,7 +127,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus'
+        'children' => 'getChildren',
+        'subject' => 'getSubject',
+        'type' => 'getType'
     ];
 
     /**
@@ -163,8 +173,27 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
         return self::$openAPIModelName;
     }
 
+    const TYPE_UNION = 'union';
+    const TYPE_EXCLUSION = 'exclusion';
+    const TYPE_INTERSECTION = 'intersection';
+    const TYPE_LEAF = 'leaf';
     
 
+    
+    /**
+     * Gets allowable values of the enum
+     *
+     * @return string[]
+     */
+    public function getTypeAllowableValues()
+    {
+        return [
+            self::TYPE_UNION,
+            self::TYPE_EXCLUSION,
+            self::TYPE_INTERSECTION,
+            self::TYPE_LEAF,
+        ];
+    }
     
 
     /**
@@ -182,7 +211,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
-        $this->container['status'] = $data['status'] ?? null;
+        $this->container['children'] = $data['children'] ?? null;
+        $this->container['subject'] = $data['subject'] ?? null;
+        $this->container['type'] = $data['type'] ?? null;
     }
 
     /**
@@ -193,6 +224,21 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
     public function listInvalidProperties()
     {
         $invalidProperties = [];
+
+        if ($this->container['subject'] === null) {
+            $invalidProperties[] = "'subject' can't be null";
+        }
+        if ($this->container['type'] === null) {
+            $invalidProperties[] = "'type' can't be null";
+        }
+        $allowedValues = $this->getTypeAllowableValues();
+        if (!is_null($this->container['type']) && !in_array($this->container['type'], $allowedValues, true)) {
+            $invalidProperties[] = sprintf(
+                "invalid value '%s' for 'type', must be one of '%s'",
+                $this->container['type'],
+                implode("', '", $allowedValues)
+            );
+        }
 
         return $invalidProperties;
     }
@@ -210,25 +256,83 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets children
      *
-     * @return string|null
+     * @return \Ory\Keto\Client\Model\ExpandTree[]|null
      */
-    public function getStatus()
+    public function getChildren()
     {
-        return $this->container['status'];
+        return $this->container['children'];
     }
 
     /**
-     * Sets status
+     * Sets children
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param \Ory\Keto\Client\Model\ExpandTree[]|null $children children
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setChildren($children)
     {
-        $this->container['status'] = $status;
+        $this->container['children'] = $children;
+
+        return $this;
+    }
+
+    /**
+     * Gets subject
+     *
+     * @return string
+     */
+    public function getSubject()
+    {
+        return $this->container['subject'];
+    }
+
+    /**
+     * Sets subject
+     *
+     * @param string $subject subject
+     *
+     * @return self
+     */
+    public function setSubject($subject)
+    {
+        $this->container['subject'] = $subject;
+
+        return $this;
+    }
+
+    /**
+     * Gets type
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return $this->container['type'];
+    }
+
+    /**
+     * Sets type
+     *
+     * @param string $type type
+     *
+     * @return self
+     */
+    public function setType($type)
+    {
+        $allowedValues = $this->getTypeAllowableValues();
+        if (!in_array($type, $allowedValues, true)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    "Invalid value '%s' for 'type', must be one of '%s'",
+                    $type,
+                    implode("', '", $allowedValues)
+                )
+            );
+        }
+        $this->container['type'] = $type;
 
         return $this;
     }

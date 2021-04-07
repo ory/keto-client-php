@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * GetRelationTuplesResponse
  *
  * PHP version 7.2
  *
@@ -33,7 +33,7 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * GetRelationTuplesResponse Class Doc Comment
  *
  * @category Class
  * @package  Ory\Keto\Client
@@ -43,7 +43,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class GetRelationTuplesResponse implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +52,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'getRelationTuplesResponse';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,7 +60,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
-        'status' => 'string'
+        'nextPageToken' => 'string',
+        'relationTuples' => '\Ory\Keto\Client\Model\InternalRelationTuple[]'
     ];
 
     /**
@@ -71,7 +72,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'status' => null
+        'nextPageToken' => null,
+        'relationTuples' => null
     ];
 
     /**
@@ -101,7 +103,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status'
+        'nextPageToken' => 'next_page_token',
+        'relationTuples' => 'relation_tuples'
     ];
 
     /**
@@ -110,7 +113,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus'
+        'nextPageToken' => 'setNextPageToken',
+        'relationTuples' => 'setRelationTuples'
     ];
 
     /**
@@ -119,7 +123,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus'
+        'nextPageToken' => 'getNextPageToken',
+        'relationTuples' => 'getRelationTuples'
     ];
 
     /**
@@ -182,7 +187,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
-        $this->container['status'] = $data['status'] ?? null;
+        $this->container['nextPageToken'] = $data['nextPageToken'] ?? null;
+        $this->container['relationTuples'] = $data['relationTuples'] ?? null;
     }
 
     /**
@@ -210,25 +216,49 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets nextPageToken
      *
      * @return string|null
      */
-    public function getStatus()
+    public function getNextPageToken()
     {
-        return $this->container['status'];
+        return $this->container['nextPageToken'];
     }
 
     /**
-     * Sets status
+     * Sets nextPageToken
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param string|null $nextPageToken The opaque token to provide in a subsequent request to get the next page. It is the empty string iff this is the last page.
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setNextPageToken($nextPageToken)
     {
-        $this->container['status'] = $status;
+        $this->container['nextPageToken'] = $nextPageToken;
+
+        return $this;
+    }
+
+    /**
+     * Gets relationTuples
+     *
+     * @return \Ory\Keto\Client\Model\InternalRelationTuple[]|null
+     */
+    public function getRelationTuples()
+    {
+        return $this->container['relationTuples'];
+    }
+
+    /**
+     * Sets relationTuples
+     *
+     * @param \Ory\Keto\Client\Model\InternalRelationTuple[]|null $relationTuples relationTuples
+     *
+     * @return self
+     */
+    public function setRelationTuples($relationTuples)
+    {
+        $this->container['relationTuples'] = $relationTuples;
 
         return $this;
     }

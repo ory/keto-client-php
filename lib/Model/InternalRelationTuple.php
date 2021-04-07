@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * InternalRelationTuple
  *
  * PHP version 7.2
  *
@@ -33,7 +33,7 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * InternalRelationTuple Class Doc Comment
  *
  * @category Class
  * @package  Ory\Keto\Client
@@ -43,7 +43,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class InternalRelationTuple implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +52,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'InternalRelationTuple';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,7 +60,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
-        'status' => 'string'
+        'namespace' => 'string',
+        'object' => 'string',
+        'relation' => 'string',
+        'subject' => 'string'
     ];
 
     /**
@@ -71,7 +74,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'status' => null
+        'namespace' => null,
+        'object' => null,
+        'relation' => null,
+        'subject' => null
     ];
 
     /**
@@ -101,7 +107,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status'
+        'namespace' => 'namespace',
+        'object' => 'object',
+        'relation' => 'relation',
+        'subject' => 'subject'
     ];
 
     /**
@@ -110,7 +119,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus'
+        'namespace' => 'setNamespace',
+        'object' => 'setObject',
+        'relation' => 'setRelation',
+        'subject' => 'setSubject'
     ];
 
     /**
@@ -119,7 +131,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus'
+        'namespace' => 'getNamespace',
+        'object' => 'getObject',
+        'relation' => 'getRelation',
+        'subject' => 'getSubject'
     ];
 
     /**
@@ -182,7 +197,10 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
-        $this->container['status'] = $data['status'] ?? null;
+        $this->container['namespace'] = $data['namespace'] ?? null;
+        $this->container['object'] = $data['object'] ?? null;
+        $this->container['relation'] = $data['relation'] ?? null;
+        $this->container['subject'] = $data['subject'] ?? null;
     }
 
     /**
@@ -194,6 +212,18 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
+        if ($this->container['namespace'] === null) {
+            $invalidProperties[] = "'namespace' can't be null";
+        }
+        if ($this->container['object'] === null) {
+            $invalidProperties[] = "'object' can't be null";
+        }
+        if ($this->container['relation'] === null) {
+            $invalidProperties[] = "'relation' can't be null";
+        }
+        if ($this->container['subject'] === null) {
+            $invalidProperties[] = "'subject' can't be null";
+        }
         return $invalidProperties;
     }
 
@@ -210,25 +240,97 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets namespace
      *
-     * @return string|null
+     * @return string
      */
-    public function getStatus()
+    public function getNamespace()
     {
-        return $this->container['status'];
+        return $this->container['namespace'];
     }
 
     /**
-     * Sets status
+     * Sets namespace
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param string $namespace Namespace of the Relation Tuple  in: query
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setNamespace($namespace)
     {
-        $this->container['status'] = $status;
+        $this->container['namespace'] = $namespace;
+
+        return $this;
+    }
+
+    /**
+     * Gets object
+     *
+     * @return string
+     */
+    public function getObject()
+    {
+        return $this->container['object'];
+    }
+
+    /**
+     * Sets object
+     *
+     * @param string $object Object of the Relation Tuple  in: query
+     *
+     * @return self
+     */
+    public function setObject($object)
+    {
+        $this->container['object'] = $object;
+
+        return $this;
+    }
+
+    /**
+     * Gets relation
+     *
+     * @return string
+     */
+    public function getRelation()
+    {
+        return $this->container['relation'];
+    }
+
+    /**
+     * Sets relation
+     *
+     * @param string $relation Relation of the Relation Tuple  in: query
+     *
+     * @return self
+     */
+    public function setRelation($relation)
+    {
+        $this->container['relation'] = $relation;
+
+        return $this;
+    }
+
+    /**
+     * Gets subject
+     *
+     * @return string
+     */
+    public function getSubject()
+    {
+        return $this->container['subject'];
+    }
+
+    /**
+     * Sets subject
+     *
+     * @param string $subject subject
+     *
+     * @return self
+     */
+    public function setSubject($subject)
+    {
+        $this->container['subject'] = $subject;
 
         return $this;
     }

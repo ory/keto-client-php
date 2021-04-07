@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * PatchDelta
  *
  * PHP version 7.2
  *
@@ -33,7 +33,7 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * PatchDelta Class Doc Comment
  *
  * @category Class
  * @package  Ory\Keto\Client
@@ -43,7 +43,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class PatchDelta implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +52,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'PatchDelta';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,7 +60,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
-        'status' => 'string'
+        'action' => 'string',
+        'relationTuple' => '\Ory\Keto\Client\Model\InternalRelationTuple'
     ];
 
     /**
@@ -71,7 +72,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'status' => null
+        'action' => null,
+        'relationTuple' => null
     ];
 
     /**
@@ -101,7 +103,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status'
+        'action' => 'action',
+        'relationTuple' => 'relation_tuple'
     ];
 
     /**
@@ -110,7 +113,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus'
+        'action' => 'setAction',
+        'relationTuple' => 'setRelationTuple'
     ];
 
     /**
@@ -119,7 +123,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus'
+        'action' => 'getAction',
+        'relationTuple' => 'getRelationTuple'
     ];
 
     /**
@@ -182,7 +187,8 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
-        $this->container['status'] = $data['status'] ?? null;
+        $this->container['action'] = $data['action'] ?? null;
+        $this->container['relationTuple'] = $data['relationTuple'] ?? null;
     }
 
     /**
@@ -210,25 +216,49 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets action
      *
      * @return string|null
      */
-    public function getStatus()
+    public function getAction()
     {
-        return $this->container['status'];
+        return $this->container['action'];
     }
 
     /**
-     * Sets status
+     * Sets action
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param string|null $action action
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setAction($action)
     {
-        $this->container['status'] = $status;
+        $this->container['action'] = $action;
+
+        return $this;
+    }
+
+    /**
+     * Gets relationTuple
+     *
+     * @return \Ory\Keto\Client\Model\InternalRelationTuple|null
+     */
+    public function getRelationTuple()
+    {
+        return $this->container['relationTuple'];
+    }
+
+    /**
+     * Sets relationTuple
+     *
+     * @param \Ory\Keto\Client\Model\InternalRelationTuple|null $relationTuple relationTuple
+     *
+     * @return self
+     */
+    public function setRelationTuple($relationTuple)
+    {
+        $this->container['relationTuple'] = $relationTuple;
 
         return $this;
     }

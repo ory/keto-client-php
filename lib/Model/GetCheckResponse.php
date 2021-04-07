@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * GetCheckResponse
  *
  * PHP version 7.2
  *
@@ -33,9 +33,10 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * GetCheckResponse Class Doc Comment
  *
  * @category Class
+ * @description The content of the allowed field is mirrored in the HTTP status code.
  * @package  Ory\Keto\Client
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
@@ -43,7 +44,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class GetCheckResponse implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +53,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'getCheckResponse';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,7 +61,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
-        'status' => 'string'
+        'allowed' => 'bool'
     ];
 
     /**
@@ -71,7 +72,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'status' => null
+        'allowed' => null
     ];
 
     /**
@@ -101,7 +102,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status'
+        'allowed' => 'allowed'
     ];
 
     /**
@@ -110,7 +111,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus'
+        'allowed' => 'setAllowed'
     ];
 
     /**
@@ -119,7 +120,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus'
+        'allowed' => 'getAllowed'
     ];
 
     /**
@@ -182,7 +183,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
-        $this->container['status'] = $data['status'] ?? null;
+        $this->container['allowed'] = $data['allowed'] ?? null;
     }
 
     /**
@@ -194,6 +195,9 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
+        if ($this->container['allowed'] === null) {
+            $invalidProperties[] = "'allowed' can't be null";
+        }
         return $invalidProperties;
     }
 
@@ -210,25 +214,25 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets allowed
      *
-     * @return string|null
+     * @return bool
      */
-    public function getStatus()
+    public function getAllowed()
     {
-        return $this->container['status'];
+        return $this->container['allowed'];
     }
 
     /**
-     * Sets status
+     * Sets allowed
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param bool $allowed whether the relation tuple is allowed
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setAllowed($allowed)
     {
-        $this->container['status'] = $status;
+        $this->container['allowed'] = $allowed;
 
         return $this;
     }

@@ -1,6 +1,6 @@
 <?php
 /**
- * HealthStatus
+ * InlineResponse400
  *
  * PHP version 7.2
  *
@@ -33,7 +33,7 @@ use \ArrayAccess;
 use \Ory\Keto\Client\ObjectSerializer;
 
 /**
- * HealthStatus Class Doc Comment
+ * InlineResponse400 Class Doc Comment
  *
  * @category Class
  * @package  Ory\Keto\Client
@@ -43,7 +43,7 @@ use \Ory\Keto\Client\ObjectSerializer;
  * @template TKey int|null
  * @template TValue mixed|null  
  */
-class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
+class InlineResponse400 implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -52,7 +52,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       *
       * @var string
       */
-    protected static $openAPIModelName = 'healthStatus';
+    protected static $openAPIModelName = 'inline_response_400';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -60,6 +60,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @var string[]
       */
     protected static $openAPITypes = [
+        'code' => 'int',
+        'details' => 'object[]',
+        'message' => 'string',
+        'reason' => 'string',
+        'request' => 'string',
         'status' => 'string'
     ];
 
@@ -71,6 +76,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
+        'code' => 'int64',
+        'details' => null,
+        'message' => null,
+        'reason' => null,
+        'request' => null,
         'status' => null
     ];
 
@@ -101,6 +111,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
+        'code' => 'code',
+        'details' => 'details',
+        'message' => 'message',
+        'reason' => 'reason',
+        'request' => 'request',
         'status' => 'status'
     ];
 
@@ -110,6 +125,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
+        'code' => 'setCode',
+        'details' => 'setDetails',
+        'message' => 'setMessage',
+        'reason' => 'setReason',
+        'request' => 'setRequest',
         'status' => 'setStatus'
     ];
 
@@ -119,6 +139,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
+        'code' => 'getCode',
+        'details' => 'getDetails',
+        'message' => 'getMessage',
+        'reason' => 'getReason',
+        'request' => 'getRequest',
         'status' => 'getStatus'
     ];
 
@@ -182,6 +207,11 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(array $data = null)
     {
+        $this->container['code'] = $data['code'] ?? null;
+        $this->container['details'] = $data['details'] ?? null;
+        $this->container['message'] = $data['message'] ?? null;
+        $this->container['reason'] = $data['reason'] ?? null;
+        $this->container['request'] = $data['request'] ?? null;
         $this->container['status'] = $data['status'] ?? null;
     }
 
@@ -210,6 +240,126 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
+     * Gets code
+     *
+     * @return int|null
+     */
+    public function getCode()
+    {
+        return $this->container['code'];
+    }
+
+    /**
+     * Sets code
+     *
+     * @param int|null $code code
+     *
+     * @return self
+     */
+    public function setCode($code)
+    {
+        $this->container['code'] = $code;
+
+        return $this;
+    }
+
+    /**
+     * Gets details
+     *
+     * @return object[]|null
+     */
+    public function getDetails()
+    {
+        return $this->container['details'];
+    }
+
+    /**
+     * Sets details
+     *
+     * @param object[]|null $details details
+     *
+     * @return self
+     */
+    public function setDetails($details)
+    {
+        $this->container['details'] = $details;
+
+        return $this;
+    }
+
+    /**
+     * Gets message
+     *
+     * @return string|null
+     */
+    public function getMessage()
+    {
+        return $this->container['message'];
+    }
+
+    /**
+     * Sets message
+     *
+     * @param string|null $message message
+     *
+     * @return self
+     */
+    public function setMessage($message)
+    {
+        $this->container['message'] = $message;
+
+        return $this;
+    }
+
+    /**
+     * Gets reason
+     *
+     * @return string|null
+     */
+    public function getReason()
+    {
+        return $this->container['reason'];
+    }
+
+    /**
+     * Sets reason
+     *
+     * @param string|null $reason reason
+     *
+     * @return self
+     */
+    public function setReason($reason)
+    {
+        $this->container['reason'] = $reason;
+
+        return $this;
+    }
+
+    /**
+     * Gets request
+     *
+     * @return string|null
+     */
+    public function getRequest()
+    {
+        return $this->container['request'];
+    }
+
+    /**
+     * Sets request
+     *
+     * @param string|null $request request
+     *
+     * @return self
+     */
+    public function setRequest($request)
+    {
+        $this->container['request'] = $request;
+
+        return $this;
+    }
+
+    /**
      * Gets status
      *
      * @return string|null
@@ -222,7 +372,7 @@ class HealthStatus implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets status
      *
-     * @param string|null $status Status always contains \"ok\".
+     * @param string|null $status status
      *
      * @return self
      */
