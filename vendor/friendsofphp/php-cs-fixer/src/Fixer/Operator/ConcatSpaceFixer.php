@@ -27,6 +27,9 @@ use PhpCsFixer\Tokenizer\Tokens;
  */
 final class ConcatSpaceFixer extends AbstractFixer implements ConfigurationDefinitionFixerInterface
 {
+    /**
+     * @var null|string
+     */
     private $fixCallback;
 
     /**
@@ -64,6 +67,16 @@ final class ConcatSpaceFixer extends AbstractFixer implements ConfigurationDefin
                 ),
             ]
         );
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * Must run after SingleLineThrowFixer.
+     */
+    public function getPriority()
+    {
+        return 0;
     }
 
     /**

@@ -25,6 +25,11 @@ use PhpCsFixer\Tokenizer\Token;
 final class Utils
 {
     /**
+     * @var array<string,true>
+     */
+    private static $deprecations = [];
+
+    /**
      * Calculate a bitmask for given constant names.
      *
      * @param string[] $options constant names
@@ -45,7 +50,7 @@ final class Utils
     }
 
     /**
-     * Converts a camel cased string to an snake cased string.
+     * Converts a camel cased string to a snake cased string.
      *
      * @param string $string
      *
@@ -53,13 +58,7 @@ final class Utils
      */
     public static function camelCaseToUnderscore($string)
     {
-        return Preg::replaceCallback(
-            '/(^|[a-z0-9])([A-Z])/',
-            static function (array $matches) {
-                return strtolower('' !== $matches[1] ? $matches[1].'_'.$matches[2] : $matches[2]);
-            },
-            $string
-        );
+        return strtolower(Preg::replace('/(?<!^)((?=[A-Z][^A-Z])|(?<![A-Z])(?=[A-Z]))/', '_', $string));
     }
 
     /**
@@ -173,7 +172,7 @@ final class Utils
     public static function naturalLanguageJoinWithBackticks(array $names)
     {
         if (empty($names)) {
-            throw new \InvalidArgumentException('Array of names cannot be empty');
+            throw new \InvalidArgumentException('Array of names cannot be empty.');
         }
 
         $names = array_map(static function ($name) {
@@ -187,5 +186,32 @@ final class Utils
         }
 
         return $last;
+    }
+
+    /**
+     * Handle triggering deprecation error.
+     */
+    public static function triggerDeprecation(\Exception $futureException)
+    {
+        if (getenv('PHP_CS_FIXER_FUTURE_MODE')) {
+            throw new \RuntimeException(
+                'Your are using something deprecated, see previous exception. Aborting execution because `PHP_CS_FIXER_FUTURE_MODE` environment variable is set.',
+                0,
+                $futureException
+            );
+        }
+
+        $message = $futureException->getMessage();
+
+        self::$deprecations[$message] = true;
+        @trigger_error($message, E_USER_DEPRECATED);
+    }
+
+    public static function getTriggeredDeprecations()
+    {
+        $triggeredDeprecations = array_keys(self::$deprecations);
+        sort($triggeredDeprecations);
+
+        return $triggeredDeprecations;
     }
 }

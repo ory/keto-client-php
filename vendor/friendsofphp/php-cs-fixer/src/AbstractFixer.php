@@ -118,13 +118,9 @@ abstract class AbstractFixer implements FixerInterface, DefinedFixerInterface
         }
 
         if (null === $configuration) {
-            $message = 'Passing NULL to set default configuration is deprecated and will not be supported in 3.0, use an empty array instead.';
-
-            if (getenv('PHP_CS_FIXER_FUTURE_MODE')) {
-                throw new \InvalidArgumentException("{$message} This check was performed as `PHP_CS_FIXER_FUTURE_MODE` env var is set.");
-            }
-
-            @trigger_error($message, E_USER_DEPRECATED);
+            Utils::triggerDeprecation(new \InvalidArgumentException(
+                'Passing NULL to set default configuration is deprecated and will not be supported in 3.0, use an empty array instead.'
+            ));
 
             $configuration = [];
         }
@@ -136,19 +132,13 @@ abstract class AbstractFixer implements FixerInterface, DefinedFixerInterface
 
             $name = $option->getName();
             if (\array_key_exists($name, $configuration)) {
-                $message = sprintf(
+                Utils::triggerDeprecation(new \InvalidArgumentException(sprintf(
                     'Option "%s" for rule "%s" is deprecated and will be removed in version %d.0. %s',
                     $name,
                     $this->getName(),
-                    (int) Application::VERSION + 1,
+                    Application::getMajorVersion() + 1,
                     str_replace('`', '"', $option->getDeprecationMessage())
-                );
-
-                if (getenv('PHP_CS_FIXER_FUTURE_MODE')) {
-                    throw new \InvalidArgumentException("{$message} This check was performed as `PHP_CS_FIXER_FUTURE_MODE` env var is set.");
-                }
-
-                @trigger_error($message, E_USER_DEPRECATED);
+                )));
             }
         }
 
@@ -176,7 +166,7 @@ abstract class AbstractFixer implements FixerInterface, DefinedFixerInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @return FixerConfigurationResolverInterface
      */
     public function getConfigurationDefinition()
     {

@@ -29,6 +29,9 @@ use PhpCsFixer\Tokenizer\Tokens;
  */
 final class AlignMultilineCommentFixer extends AbstractFixer implements ConfigurationDefinitionFixerInterface, WhitespacesAwareFixerInterface
 {
+    /**
+     * @var null|int[]
+     */
     private $tokenKinds;
 
     /**
@@ -85,11 +88,13 @@ with a line not prefixed with asterisk
 
     /**
      * {@inheritdoc}
+     *
+     * Must run before CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, GeneralPhpdocTagRenameFixer, NoBlankLinesAfterPhpdocFixer, NoEmptyPhpdocFixer, NoSuperfluousPhpdocTagsFixer, PhpdocAddMissingParamAnnotationFixer, PhpdocAlignFixer, PhpdocAnnotationWithoutDotFixer, PhpdocInlineTagFixer, PhpdocInlineTagNormalizerFixer, PhpdocLineSpanFixer, PhpdocNoAccessFixer, PhpdocNoAliasTagFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocNoUselessInheritdocFixer, PhpdocOrderByValueFixer, PhpdocOrderFixer, PhpdocReturnSelfReferenceFixer, PhpdocSeparationFixer, PhpdocSingleLineVarSpacingFixer, PhpdocSummaryFixer, PhpdocTagCasingFixer, PhpdocTagTypeFixer, PhpdocToParamTypeFixer, PhpdocToPropertyTypeFixer, PhpdocToReturnTypeFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimFixer, PhpdocTypesOrderFixer, PhpdocVarAnnotationCorrectOrderFixer, PhpdocVarWithoutNameFixer.
+     * Must run after ArrayIndentationFixer.
      */
     public function getPriority()
     {
-        // Should run after ArrayIndentationFixer
-        return -40;
+        return 27;
     }
 
     /**
@@ -121,7 +126,7 @@ with a line not prefixed with asterisk
                 $whitespace = Preg::replace('/\S/', '', $tokens[$previousIndex]->getContent()).$whitespace;
             }
 
-            if (1 !== Preg::match('/\R([ \t]*)$/', $whitespace, $matches)) {
+            if (1 !== Preg::match('/\R(\h*)$/', $whitespace, $matches)) {
                 continue;
             }
 

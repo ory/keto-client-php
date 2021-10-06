@@ -25,6 +25,9 @@ use PhpCsFixer\Tokenizer\Tokens;
  */
 final class EncodingFixer extends AbstractFixer
 {
+    /**
+     * @var string
+     */
     private $BOM;
 
     public function __construct()
@@ -77,6 +80,7 @@ echo "Hello!";
         $content = $tokens[0]->getContent();
 
         if (0 === strncmp($content, $this->BOM, 3)) {
+            /** @var false|string $newContent until support for PHP 5.6 is dropped */
             $newContent = substr($content, 3);
 
             if (false === $newContent) {
