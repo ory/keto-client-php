@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,6 +17,7 @@ namespace PhpCsFixer\Fixer\PhpTag;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -22,13 +25,12 @@ use PhpCsFixer\Tokenizer\Tokens;
  * Fixer for rules defined in PSR2 ¶2.2.
  *
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NoClosingTagFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'The closing `?>` tag MUST be omitted from files containing only PHP.',
@@ -36,25 +38,15 @@ final class NoClosingTagFixer extends AbstractFixer
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isTokenKindFound(T_CLOSE_TAG);
+        return \count($tokens) >= 2 && $tokens->isMonolithicPhp() && $tokens->isTokenKindFound(\T_CLOSE_TAG);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
-        if (\count($tokens) < 2 || !$tokens->isMonolithicPhp() || !$tokens->isTokenKindFound(T_CLOSE_TAG)) {
-            return;
-        }
-
-        $closeTags = $tokens->findGivenKind(T_CLOSE_TAG);
-        $index = key($closeTags);
+        $closeTags = $tokens->findGivenKind(\T_CLOSE_TAG);
+        $index = array_key_first($closeTags);
 
         if (isset($tokens[$index - 1]) && $tokens[$index - 1]->isWhitespace()) {
             $tokens->clearAt($index - 1);
@@ -62,7 +54,7 @@ final class NoClosingTagFixer extends AbstractFixer
         $tokens->clearAt($index);
 
         $prevIndex = $tokens->getPrevMeaningfulToken($index);
-        if (!$tokens[$prevIndex]->equalsAny([';', '}', [T_OPEN_TAG]])) {
+        if (!$tokens[$prevIndex]->equalsAny([';', '}', [\T_OPEN_TAG]])) {
             $tokens->insertAt($prevIndex + 1, new Token(';'));
         }
     }

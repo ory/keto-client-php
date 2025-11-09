@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -20,33 +22,33 @@ use PhpCsFixer\Console\Application;
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class ToolInfo implements ToolInfoInterface
 {
-    const COMPOSER_PACKAGE_NAME = 'friendsofphp/php-cs-fixer';
+    public const COMPOSER_PACKAGE_NAME = 'friendsofphp/php-cs-fixer';
 
-    const COMPOSER_LEGACY_PACKAGE_NAME = 'fabpot/php-cs-fixer';
-
-    /**
-     * @var null|array
-     */
-    private $composerInstallationDetails;
+    public const COMPOSER_LEGACY_PACKAGE_NAME = 'fabpot/php-cs-fixer';
 
     /**
-     * @var null|bool
+     * @var null|array{name: string, version: string, dist: array{reference?: string}}
      */
-    private $isInstalledByComposer;
+    private ?array $composerInstallationDetails = null;
 
-    public function getComposerInstallationDetails()
+    private ?bool $isInstalledByComposer = null;
+
+    public function getComposerInstallationDetails(): array
     {
         if (!$this->isInstalledByComposer()) {
             throw new \LogicException('Cannot get composer version for tool not installed by composer.');
         }
 
         if (null === $this->composerInstallationDetails) {
-            $composerInstalled = json_decode(file_get_contents($this->getComposerInstalledFile()), true);
+            $composerInstalled = json_decode(file_get_contents($this->getComposerInstalledFile()), true, 512, \JSON_THROW_ON_ERROR);
 
-            $packages = isset($composerInstalled['packages']) ? $composerInstalled['packages'] : $composerInstalled;
+            /** @var list<array{name: string, version: string, dist: array{reference?: string}}> $packages */
+            $packages = $composerInstalled['packages'] ?? $composerInstalled;
 
             foreach ($packages as $package) {
                 if (\in_array($package['name'], [self::COMPOSER_PACKAGE_NAME, self::COMPOSER_LEGACY_PACKAGE_NAME], true)) {
@@ -60,7 +62,7 @@ final class ToolInfo implements ToolInfoInterface
         return $this->composerInstallationDetails;
     }
 
-    public function getComposerVersion()
+    public function getComposerVersion(): string
     {
         $package = $this->getComposerInstallationDetails();
 
@@ -73,7 +75,7 @@ final class ToolInfo implements ToolInfoInterface
         return $package['version'].$versionSuffix;
     }
 
-    public function getVersion()
+    public function getVersion(): string
     {
         if ($this->isInstalledByComposer()) {
             return Application::VERSION.':'.$this->getComposerVersion();
@@ -82,12 +84,12 @@ final class ToolInfo implements ToolInfoInterface
         return Application::VERSION;
     }
 
-    public function isInstalledAsPhar()
+    public function isInstalledAsPhar(): bool
     {
-        return 'phar://' === substr(__DIR__, 0, 7);
+        return str_starts_with(__DIR__, 'phar://');
     }
 
-    public function isInstalledByComposer()
+    public function isInstalledByComposer(): bool
     {
         if (null === $this->isInstalledByComposer) {
             $this->isInstalledByComposer = !$this->isInstalledAsPhar() && file_exists($this->getComposerInstalledFile());
@@ -96,15 +98,24 @@ final class ToolInfo implements ToolInfoInterface
         return $this->isInstalledByComposer;
     }
 
-    public function getPharDownloadUri($version)
+    /**
+     * Determines if the tool is run inside our pre-built Docker image.
+     * The `/fixer/` path comes from our Dockerfile, tool is installed there and added to global PATH via symlinked binary.
+     */
+    public function isRunInsideDocker(): bool
     {
-        return sprintf(
-            'https://github.com/FriendsOfPHP/PHP-CS-Fixer/releases/download/%s/php-cs-fixer.phar',
+        return str_starts_with(__FILE__, '/fixer/') && is_file('/.dockerenv');
+    }
+
+    public function getPharDownloadUri(string $version): string
+    {
+        return \sprintf(
+            'https://github.com/PHP-CS-Fixer/PHP-CS-Fixer/releases/download/%s/php-cs-fixer.phar',
             $version
         );
     }
 
-    private function getComposerInstalledFile()
+    private function getComposerInstalledFile(): string
     {
         return __DIR__.'/../../../composer/installed.json';
     }

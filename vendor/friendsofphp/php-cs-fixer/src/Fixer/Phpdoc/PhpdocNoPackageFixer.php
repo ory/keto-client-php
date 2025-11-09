@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,32 +17,34 @@ namespace PhpCsFixer\Fixer\Phpdoc;
 use PhpCsFixer\AbstractProxyFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 
 /**
- * @author Graham Campbell <graham@alt-three.com>
+ * @author Graham Campbell <hello@gjcampbell.co.uk>
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class PhpdocNoPackageFixer extends AbstractProxyFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
-            '`@package` and `@subpackage` annotations should be omitted from PHPDoc.',
+            '`@package` and `@subpackage` annotations must be removed from PHPDoc.',
             [
                 new CodeSample(
-                    '<?php
-/**
- * @internal
- * @package Foo
- * subpackage Bar
- */
-class Baz
-{
-}
-'
+                    <<<'PHP'
+                        <?php
+                        /**
+                         * @internal
+                         * @package Foo
+                         * subpackage Bar
+                         */
+                        class Baz
+                        {
+                        }
+
+                        PHP
                 ),
             ]
         );
@@ -52,18 +56,18 @@ class Baz
      * Must run before NoEmptyPhpdocFixer, PhpdocAlignFixer, PhpdocSeparationFixer, PhpdocTrimFixer.
      * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return parent::getPriority();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function createProxyFixers()
+    protected function createProxyFixers(): array
     {
         $fixer = new GeneralPhpdocAnnotationRemoveFixer();
-        $fixer->configure(['annotations' => ['package', 'subpackage']]);
+        $fixer->configure([
+            'annotations' => ['package', 'subpackage'],
+            'case_sensitive' => true,
+        ]);
 
         return [$fixer];
     }

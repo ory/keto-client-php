@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,13 +16,12 @@ namespace PhpCsFixer\Differ;
 
 /**
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NullDiffer implements DifferInterface
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function diff($old, $new)
+    public function diff(string $old, string $new, ?\SplFileInfo $file = null): string
     {
         return '';
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -13,58 +15,36 @@
 namespace PhpCsFixer\Fixer\CastNotation;
 
 use PhpCsFixer\AbstractFixer;
+use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
-use PhpCsFixer\FixerDefinition\VersionSpecification;
-use PhpCsFixer\FixerDefinition\VersionSpecificCodeSample;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class ShortScalarCastFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Cast `(boolean)` and `(integer)` should be written as `(bool)` and `(int)`, `(double)` and `(real)` as `(float)`, `(binary)` as `(string)`.',
             [
-                new VersionSpecificCodeSample(
-                    "<?php\n\$a = (boolean) \$b;\n\$a = (integer) \$b;\n\$a = (double) \$b;\n\$a = (real) \$b;\n\n\$a = (binary) \$b;\n",
-                    new VersionSpecification(null, 70399)
-                ),
-                new VersionSpecificCodeSample(
+                new CodeSample(
                     "<?php\n\$a = (boolean) \$b;\n\$a = (integer) \$b;\n\$a = (double) \$b;\n\n\$a = (binary) \$b;\n",
-                    new VersionSpecification(70400)
                 ),
             ]
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isAnyTokenKindsFound(Token::getCastTokenKinds());
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
-        static $castMap = [
-            'boolean' => 'bool',
-            'integer' => 'int',
-            'double' => 'float',
-            'real' => 'float',
-            'binary' => 'string',
-        ];
-
         for ($index = 0, $count = $tokens->count(); $index < $count; ++$index) {
             if (!$tokens[$index]->isCast()) {
                 continue;
@@ -73,13 +53,21 @@ final class ShortScalarCastFixer extends AbstractFixer
             $castFrom = trim(substr($tokens[$index]->getContent(), 1, -1));
             $castFromLowered = strtolower($castFrom);
 
-            if (!\array_key_exists($castFromLowered, $castMap)) {
+            $castTo = [
+                'boolean' => 'bool',
+                'integer' => 'int',
+                'double' => 'float',
+                'real' => 'float',
+                'binary' => 'string',
+            ][$castFromLowered] ?? null;
+
+            if (null === $castTo) {
                 continue;
             }
 
             $tokens[$index] = new Token([
                 $tokens[$index]->getId(),
-                str_replace($castFrom, $castMap[$castFromLowered], $tokens[$index]->getContent()),
+                str_replace($castFrom, $castTo, $tokens[$index]->getContent()),
             ]);
         }
     }

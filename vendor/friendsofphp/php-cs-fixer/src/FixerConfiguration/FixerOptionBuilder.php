@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -12,56 +14,41 @@
 
 namespace PhpCsFixer\FixerConfiguration;
 
+/**
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
+ */
 final class FixerOptionBuilder
 {
-    /**
-     * @var string
-     */
-    private $name;
+    private string $name;
+
+    private string $description;
 
     /**
-     * @var string
-     */
-    private $description;
-
-    /**
-     * @var mixed
+     * @var null|mixed
      */
     private $default;
 
-    /**
-     * @var bool
-     */
-    private $isRequired = true;
+    private bool $isRequired = true;
 
     /**
-     * @var null|string[]
+     * @var null|list<string>
      */
-    private $allowedTypes;
+    private ?array $allowedTypes = null;
 
     /**
-     * @var null|array
+     * @var null|non-empty-list<null|(callable(mixed): bool)|scalar>
      */
-    private $allowedValues;
+    private ?array $allowedValues = null;
 
-    /**
-     * @var null|\Closure
-     */
-    private $normalizer;
+    private ?\Closure $normalizer = null;
 
-    /**
-     * @var null|string
-     */
-    private $deprecationMessage;
+    private ?string $deprecationMessage = null;
 
-    /**
-     * @param string $name
-     * @param string $description
-     */
-    public function __construct($name, $description)
+    public function __construct(string $name, string $description)
     {
         $this->name = $name;
         $this->description = $description;
+        $this->default = null;
     }
 
     /**
@@ -69,7 +56,7 @@ final class FixerOptionBuilder
      *
      * @return $this
      */
-    public function setDefault($default)
+    public function setDefault($default): self
     {
         $this->default = $default;
         $this->isRequired = false;
@@ -78,11 +65,11 @@ final class FixerOptionBuilder
     }
 
     /**
-     * @param string[] $allowedTypes
+     * @param list<string> $allowedTypes
      *
      * @return $this
      */
-    public function setAllowedTypes(array $allowedTypes)
+    public function setAllowedTypes(array $allowedTypes): self
     {
         $this->allowedTypes = $allowedTypes;
 
@@ -90,9 +77,11 @@ final class FixerOptionBuilder
     }
 
     /**
+     * @param non-empty-list<null|(callable(mixed): bool)|scalar> $allowedValues
+     *
      * @return $this
      */
-    public function setAllowedValues(array $allowedValues)
+    public function setAllowedValues(array $allowedValues): self
     {
         $this->allowedValues = $allowedValues;
 
@@ -102,7 +91,7 @@ final class FixerOptionBuilder
     /**
      * @return $this
      */
-    public function setNormalizer(\Closure $normalizer)
+    public function setNormalizer(\Closure $normalizer): self
     {
         $this->normalizer = $normalizer;
 
@@ -110,21 +99,16 @@ final class FixerOptionBuilder
     }
 
     /**
-     * @param null|string $deprecationMessage
-     *
      * @return $this
      */
-    public function setDeprecationMessage($deprecationMessage)
+    public function setDeprecationMessage(?string $deprecationMessage): self
     {
         $this->deprecationMessage = $deprecationMessage;
 
         return $this;
     }
 
-    /**
-     * @return FixerOptionInterface
-     */
-    public function getOption()
+    public function getOption(): FixerOptionInterface
     {
         $option = new FixerOption(
             $this->name,

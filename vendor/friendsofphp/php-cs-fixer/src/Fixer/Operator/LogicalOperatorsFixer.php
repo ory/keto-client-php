@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,28 +17,30 @@ namespace PhpCsFixer\Fixer\Operator;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
  * @author Haralan Dobrev <hkdobrev@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class LogicalOperatorsFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Use `&&` and `||` logical operators instead of `and` and `or`.',
             [
                 new CodeSample(
-                    '<?php
+                    <<<'PHP'
+                        <?php
 
-if ($a == "foo" and ($b == "bar" or $c == "baz")) {
-}
-'
+                        if ($a == "foo" and ($b == "bar" or $c == "baz")) {
+                        }
+
+                        PHP
                 ),
             ],
             null,
@@ -44,32 +48,23 @@ if ($a == "foo" and ($b == "bar" or $c == "baz")) {
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isAnyTokenKindsFound([T_LOGICAL_AND, T_LOGICAL_OR]);
+        return $tokens->isAnyTokenKindsFound([\T_LOGICAL_AND, \T_LOGICAL_OR]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isRisky()
+    public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         foreach ($tokens as $index => $token) {
-            if ($token->isGivenKind(T_LOGICAL_AND)) {
-                $tokens[$index] = new Token([T_BOOLEAN_AND, '&&']);
-            } elseif ($token->isGivenKind(T_LOGICAL_OR)) {
-                $tokens[$index] = new Token([T_BOOLEAN_OR, '||']);
+            if ($token->isGivenKind(\T_LOGICAL_AND)) {
+                $tokens[$index] = new Token([\T_BOOLEAN_AND, '&&']);
+            } elseif ($token->isGivenKind(\T_LOGICAL_OR)) {
+                $tokens[$index] = new Token([\T_BOOLEAN_OR, '||']);
             }
         }
     }

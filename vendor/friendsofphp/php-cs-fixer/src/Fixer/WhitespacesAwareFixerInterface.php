@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -16,8 +18,10 @@ use PhpCsFixer\WhitespacesFixerConfig;
 
 /**
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 interface WhitespacesAwareFixerInterface extends FixerInterface
 {
-    public function setWhitespacesConfig(WhitespacesFixerConfig $config);
+    public function setWhitespacesConfig(WhitespacesFixerConfig $config): void;
 }

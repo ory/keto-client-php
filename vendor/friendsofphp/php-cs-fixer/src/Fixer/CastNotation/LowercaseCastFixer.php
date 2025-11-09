@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -13,76 +15,50 @@
 namespace PhpCsFixer\Fixer\CastNotation;
 
 use PhpCsFixer\AbstractFixer;
+use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
-use PhpCsFixer\FixerDefinition\VersionSpecification;
-use PhpCsFixer\FixerDefinition\VersionSpecificCodeSample;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class LowercaseCastFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Cast should be written in lower case.',
             [
-                new VersionSpecificCodeSample(
-                    '<?php
-    $a = (BOOLEAN) $b;
-    $a = (BOOL) $b;
-    $a = (INTEGER) $b;
-    $a = (INT) $b;
-    $a = (DOUBLE) $b;
-    $a = (FLoaT) $b;
-    $a = (reaL) $b;
-    $a = (flOAT) $b;
-    $a = (sTRING) $b;
-    $a = (ARRAy) $b;
-    $a = (OBJect) $b;
-    $a = (UNset) $b;
-    $a = (Binary) $b;
-',
-                    new VersionSpecification(null, 70399)
-                ),
-                new VersionSpecificCodeSample(
-                    '<?php
-    $a = (BOOLEAN) $b;
-    $a = (BOOL) $b;
-    $a = (INTEGER) $b;
-    $a = (INT) $b;
-    $a = (DOUBLE) $b;
-    $a = (FLoaT) $b;
-    $a = (flOAT) $b;
-    $a = (sTRING) $b;
-    $a = (ARRAy) $b;
-    $a = (OBJect) $b;
-    $a = (UNset) $b;
-    $a = (Binary) $b;
-',
-                    new VersionSpecification(70400)
+                new CodeSample(
+                    <<<'PHP'
+                        <?php
+                            $a = (BOOLEAN) $b;
+                            $a = (BOOL) $b;
+                            $a = (INTEGER) $b;
+                            $a = (INT) $b;
+                            $a = (DOUBLE) $b;
+                            $a = (FLoaT) $b;
+                            $a = (flOAT) $b;
+                            $a = (stRING) $b;
+                            $a = (ARRAy) $b;
+                            $a = (OBJect) $b;
+                            $a = (UNset) $b;
+                            $a = (Binary) $b;
+
+                        PHP,
                 ),
             ]
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isAnyTokenKindsFound(Token::getCastTokenKinds());
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         for ($index = 0, $count = $tokens->count(); $index < $count; ++$index) {
             if (!$tokens[$index]->isCast()) {

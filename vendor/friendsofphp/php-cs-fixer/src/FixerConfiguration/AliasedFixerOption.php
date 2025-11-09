@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,86 +17,65 @@ namespace PhpCsFixer\FixerConfiguration;
 /**
  * @author ntzm
  *
+ * @readonly
+ *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class AliasedFixerOption implements FixerOptionInterface
 {
-    /**
-     * @var FixerOptionInterface
-     */
-    private $fixerOption;
+    private FixerOptionInterface $fixerOption;
 
-    /**
-     * @var string
-     */
-    private $alias;
+    private string $alias;
 
-    public function __construct(FixerOptionInterface $fixerOption, $alias)
+    public function __construct(FixerOptionInterface $fixerOption, string $alias)
     {
         $this->fixerOption = $fixerOption;
         $this->alias = $alias;
     }
 
-    /**
-     * @return string
-     */
-    public function getAlias()
+    public function getAlias(): string
     {
         return $this->alias;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getName()
+    public function getName(): string
     {
         return $this->fixerOption->getName();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getDescription()
+    public function getDescription(): string
     {
         return $this->fixerOption->getDescription();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function hasDefault()
+    public function hasDefault(): bool
     {
         return $this->fixerOption->hasDefault();
     }
 
     /**
-     * {@inheritdoc}
+     * @return mixed
+     *
+     * @throws \LogicException when no default value is defined
      */
     public function getDefault()
     {
         return $this->fixerOption->getDefault();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getAllowedTypes()
+    public function getAllowedTypes(): ?array
     {
         return $this->fixerOption->getAllowedTypes();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getAllowedValues()
+    public function getAllowedValues(): ?array
     {
         return $this->fixerOption->getAllowedValues();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getNormalizer()
+    public function getNormalizer(): ?\Closure
     {
         return $this->fixerOption->getNormalizer();
     }

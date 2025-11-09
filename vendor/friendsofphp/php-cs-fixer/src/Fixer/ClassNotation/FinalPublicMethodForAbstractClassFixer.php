@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,18 +17,21 @@ namespace PhpCsFixer\Fixer\ClassNotation;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
  * @author Filippo Tessarotto <zoeslam@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class FinalPublicMethodForAbstractClassFixer extends AbstractFixer
 {
     /**
-     * @var array
+     * @var array<string, true>
      */
-    private $magicMethods = [
+    private array $magicMethods = [
         '__construct' => true,
         '__destruct' => true,
         '__call' => true,
@@ -44,23 +49,22 @@ final class FinalPublicMethodForAbstractClassFixer extends AbstractFixer
         '__debuginfo' => true,
     ];
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'All `public` methods of `abstract` classes should be `final`.',
             [
                 new CodeSample(
-                    '<?php
+                    <<<'PHP'
+                        <?php
 
-abstract class AbstractMachine
-{
-    public function start()
-    {}
-}
-'
+                        abstract class AbstractMachine
+                        {
+                            public function start()
+                            {}
+                        }
+
+                        PHP
                 ),
             ],
             'Enforce API encapsulation in an inheritance architecture. '
@@ -69,32 +73,23 @@ abstract class AbstractMachine
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isAllTokenKindsFound([T_CLASS, T_ABSTRACT, T_PUBLIC, T_FUNCTION]);
+        return $tokens->isAllTokenKindsFound([\T_ABSTRACT, \T_PUBLIC, \T_FUNCTION]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isRisky()
+    public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
-        $classes = array_keys($tokens->findGivenKind(T_CLASS));
+        $abstracts = array_keys($tokens->findGivenKind(\T_ABSTRACT));
 
-        while ($classIndex = array_pop($classes)) {
-            $prevToken = $tokens[$tokens->getPrevMeaningfulToken($classIndex)];
-            if (!$prevToken->isGivenKind(T_ABSTRACT)) {
+        foreach (array_reverse($abstracts) as $abstractIndex) {
+            $classIndex = $tokens->getNextTokenOfKind($abstractIndex, [[\T_CLASS], [\T_FUNCTION]]);
+            if (!$tokens[$classIndex]->isGivenKind(\T_CLASS)) {
                 continue;
             }
 
@@ -105,11 +100,7 @@ abstract class AbstractMachine
         }
     }
 
-    /**
-     * @param int $classOpenIndex
-     * @param int $classCloseIndex
-     */
-    private function fixClass(Tokens $tokens, $classOpenIndex, $classCloseIndex)
+    private function fixClass(Tokens $tokens, int $classOpenIndex, int $classCloseIndex): void
     {
         for ($index = $classCloseIndex - 1; $index > $classOpenIndex; --$index) {
             // skip method contents
@@ -120,20 +111,23 @@ abstract class AbstractMachine
             }
 
             // skip non public methods
-            if (!$tokens[$index]->isGivenKind(T_PUBLIC)) {
+            if (!$tokens[$index]->isGivenKind(\T_PUBLIC)) {
                 continue;
             }
+
             $nextIndex = $tokens->getNextMeaningfulToken($index);
             $nextToken = $tokens[$nextIndex];
-            if ($nextToken->isGivenKind(T_STATIC)) {
+
+            if ($nextToken->isGivenKind(\T_STATIC)) {
                 $nextIndex = $tokens->getNextMeaningfulToken($nextIndex);
                 $nextToken = $tokens[$nextIndex];
             }
 
             // skip uses, attributes, constants etc
-            if (!$nextToken->isGivenKind(T_FUNCTION)) {
+            if (!$nextToken->isGivenKind(\T_FUNCTION)) {
                 continue;
             }
+
             $nextIndex = $tokens->getNextMeaningfulToken($nextIndex);
             $nextToken = $tokens[$nextIndex];
 
@@ -144,13 +138,15 @@ abstract class AbstractMachine
 
             $prevIndex = $tokens->getPrevMeaningfulToken($index);
             $prevToken = $tokens[$prevIndex];
-            if ($prevToken->isGivenKind(T_STATIC)) {
+
+            if ($prevToken->isGivenKind(\T_STATIC)) {
                 $index = $prevIndex;
                 $prevIndex = $tokens->getPrevMeaningfulToken($index);
                 $prevToken = $tokens[$prevIndex];
             }
+
             // skip abstract or already final methods
-            if ($prevToken->isGivenKind([T_ABSTRACT, T_FINAL])) {
+            if ($prevToken->isGivenKind([\T_ABSTRACT, \T_FINAL])) {
                 $index = $prevIndex;
 
                 continue;
@@ -159,8 +155,8 @@ abstract class AbstractMachine
             $tokens->insertAt(
                 $index,
                 [
-                    new Token([T_FINAL, 'final']),
-                    new Token([T_WHITESPACE, ' ']),
+                    new Token([\T_FINAL, 'final']),
+                    new Token([\T_WHITESPACE, ' ']),
                 ]
             );
         }

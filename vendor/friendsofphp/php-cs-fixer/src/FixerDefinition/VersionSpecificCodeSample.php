@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,51 +16,40 @@ namespace PhpCsFixer\FixerDefinition;
 
 /**
  * @author Andreas Möller <am@localheinz.com>
+ *
+ * @readonly
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class VersionSpecificCodeSample implements VersionSpecificCodeSampleInterface
 {
-    /**
-     * @var CodeSampleInterface
-     */
-    private $codeSample;
+    private CodeSampleInterface $codeSample;
+
+    private VersionSpecificationInterface $versionSpecification;
 
     /**
-     * @var VersionSpecificationInterface
-     */
-    private $versionSpecification;
-
-    /**
-     * @param string $code
+     * @param null|array<string, mixed> $configuration
      */
     public function __construct(
-        $code,
+        string $code,
         VersionSpecificationInterface $versionSpecification,
-        array $configuration = null
+        ?array $configuration = null
     ) {
         $this->codeSample = new CodeSample($code, $configuration);
         $this->versionSpecification = $versionSpecification;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getCode()
+    public function getCode(): string
     {
         return $this->codeSample->getCode();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getConfiguration()
+    public function getConfiguration(): ?array
     {
         return $this->codeSample->getConfiguration();
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isSuitableFor($version)
+    public function isSuitableFor(int $version): bool
     {
         return $this->versionSpecification->isSatisfiedBy($version);
     }

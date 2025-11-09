@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,60 +17,51 @@ namespace PhpCsFixer\Fixer\FunctionNotation;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\CT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 use PhpCsFixer\Tokenizer\TokensAnalyzer;
 
 /**
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class StaticLambdaFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
-            'Lambdas not (indirect) referencing `$this` must be declared `static`.',
+            'Lambdas not (indirectly) referencing `$this` must be declared `static`.',
             [new CodeSample("<?php\n\$a = function () use (\$b)\n{   echo \$b;\n};\n")],
             null,
             'Risky when using `->bindTo` on lambdas without referencing to `$this`.'
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        if (\PHP_VERSION_ID >= 70400 && $tokens->isTokenKindFound(T_FN)) {
-            return true;
-        }
-
-        return $tokens->isTokenKindFound(T_FUNCTION);
+        return $tokens->isAnyTokenKindsFound([\T_FUNCTION, \T_FN]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isRisky()
+    public function isRisky(): bool
     {
         return true;
     }
 
     /**
      * {@inheritdoc}
+     *
+     * Must run after StaticPrivateMethodFixer.
      */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    public function getPriority(): int
+    {
+        return parent::getPriority();
+    }
+
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $analyzer = new TokensAnalyzer($tokens);
-        $expectedFunctionKinds = [T_FUNCTION];
-
-        if (\PHP_VERSION_ID >= 70400) {
-            $expectedFunctionKinds[] = T_FN;
-        }
+        $expectedFunctionKinds = [\T_FUNCTION, \T_FN];
 
         for ($index = $tokens->count() - 4; $index > 0; --$index) {
             if (!$tokens[$index]->isGivenKind($expectedFunctionKinds) || !$analyzer->isLambda($index)) {
@@ -77,7 +70,7 @@ final class StaticLambdaFixer extends AbstractFixer
 
             $prev = $tokens->getPrevMeaningfulToken($index);
 
-            if ($tokens[$prev]->isGivenKind(T_STATIC)) {
+            if ($tokens[$prev]->isGivenKind(\T_STATIC)) {
                 continue; // lambda is already 'static'
             }
 
@@ -86,12 +79,12 @@ final class StaticLambdaFixer extends AbstractFixer
 
             // figure out where the lambda starts and ends
 
-            if ($tokens[$index]->isGivenKind(T_FUNCTION)) {
+            if ($tokens[$index]->isGivenKind(\T_FUNCTION)) {
                 $lambdaOpenIndex = $tokens->getNextTokenOfKind($argumentsEndIndex, ['{']);
                 $lambdaEndIndex = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_CURLY_BRACE, $lambdaOpenIndex);
             } else { // T_FN
-                $lambdaOpenIndex = $tokens->getNextTokenOfKind($argumentsEndIndex, [[T_DOUBLE_ARROW]]);
-                $lambdaEndIndex = $this->findExpressionEnd($tokens, $lambdaOpenIndex);
+                $lambdaOpenIndex = $tokens->getNextTokenOfKind($argumentsEndIndex, [[\T_DOUBLE_ARROW]]);
+                $lambdaEndIndex = $analyzer->getLastTokenIndexOfArrowFunction($index);
             }
 
             if ($this->hasPossibleReferenceToThis($tokens, $lambdaOpenIndex, $lambdaEndIndex)) {
@@ -102,8 +95,8 @@ final class StaticLambdaFixer extends AbstractFixer
             $tokens->insertAt(
                 $index,
                 [
-                    new Token([T_STATIC, 'static']),
-                    new Token([T_WHITESPACE, ' ']),
+                    new Token([\T_STATIC, 'static']),
+                    new Token([\T_WHITESPACE, ' ']),
                 ]
             );
 
@@ -112,71 +105,50 @@ final class StaticLambdaFixer extends AbstractFixer
     }
 
     /**
-     * @param int $index
-     *
-     * @return int
-     */
-    private function findExpressionEnd(Tokens $tokens, $index)
-    {
-        $nextIndex = $tokens->getNextMeaningfulToken($index);
-
-        while (null !== $nextIndex) {
-            /** @var Token $nextToken */
-            $nextToken = $tokens[$nextIndex];
-
-            if ($nextToken->equalsAny([',', ';', [T_CLOSE_TAG]])) {
-                break;
-            }
-
-            /** @var null|array{isStart: bool, type: int} $blockType */
-            $blockType = Tokens::detectBlockType($nextToken);
-
-            if (null !== $blockType && $blockType['isStart']) {
-                $nextIndex = $tokens->findBlockEnd($blockType['type'], $nextIndex);
-            }
-
-            $index = $nextIndex;
-            $nextIndex = $tokens->getNextMeaningfulToken($index);
-        }
-
-        return $index;
-    }
-
-    /**
      * Returns 'true' if there is a possible reference to '$this' within the given tokens index range.
-     *
-     * @param int $startIndex
-     * @param int $endIndex
-     *
-     * @return bool
      */
-    private function hasPossibleReferenceToThis(Tokens $tokens, $startIndex, $endIndex)
+    private function hasPossibleReferenceToThis(Tokens $tokens, int $startIndex, int $endIndex): bool
     {
-        for ($i = $startIndex; $i < $endIndex; ++$i) {
-            if ($tokens[$i]->isGivenKind(T_VARIABLE) && '$this' === strtolower($tokens[$i]->getContent())) {
+        for ($i = $startIndex; $i <= $endIndex; ++$i) {
+            if ($tokens[$i]->isGivenKind(\T_VARIABLE) && '$this' === strtolower($tokens[$i]->getContent())) {
                 return true; // directly accessing '$this'
             }
 
             if ($tokens[$i]->isGivenKind([
-                T_INCLUDE,                    // loading additional symbols we cannot analyze here
-                T_INCLUDE_ONCE,               // "
-                T_REQUIRE,                    // "
-                T_REQUIRE_ONCE,               // "
+                \T_INCLUDE,                    // loading additional symbols we cannot analyse here
+                \T_INCLUDE_ONCE,               // "
+                \T_REQUIRE,                    // "
+                \T_REQUIRE_ONCE,               // "
                 CT::T_DYNAMIC_VAR_BRACE_OPEN, // "$h = ${$g};" case
-                T_EVAL,                       // "$c = eval('return $this;');" case
+                \T_EVAL,                       // "$c = eval('return $this;');" case
             ])) {
                 return true;
+            }
+
+            if ($tokens[$i]->isClassy()) {
+                $openBraceIndex = $tokens->getNextTokenOfKind($i, ['{']);
+                $i = $tokens->getNextMeaningfulToken($i);
+                if ($i <= $openBraceIndex && $this->hasPossibleReferenceToThis(
+                    $tokens,
+                    $i,
+                    $openBraceIndex
+                )) {
+                    return true;
+                }
+                $i = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_CURLY_BRACE, $openBraceIndex);
+
+                continue;
             }
 
             if ($tokens[$i]->equals('$')) {
                 $nextIndex = $tokens->getNextMeaningfulToken($i);
 
-                if ($tokens[$nextIndex]->isGivenKind(T_VARIABLE)) {
+                if ($tokens[$nextIndex]->isGivenKind(\T_VARIABLE)) {
                     return true; // "$$a" case
                 }
             }
 
-            if ($tokens[$i]->equals([T_STRING, 'parent'], false)) {
+            if ($tokens[$i]->equals([\T_STRING, 'parent'], false)) {
                 return true; // parent:: case
             }
         }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,35 +17,33 @@ namespace PhpCsFixer\Linter;
 /**
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
+ * @readonly
+ *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class TokenizerLintingResult implements LintingResultInterface
 {
-    /**
-     * @var null|\Error
-     */
-    private $error;
+    private ?\Error $error;
 
-    public function __construct(\Error $error = null)
+    public function __construct(?\Error $error = null)
     {
         $this->error = $error;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function check()
+    public function check(): void
     {
         if (null !== $this->error) {
             throw new LintingException(
-                sprintf('%s: %s on line %d.', $this->getMessagePrefix(), $this->error->getMessage(), $this->error->getLine()),
+                \sprintf('%s: %s on line %d.', $this->getMessagePrefix(), $this->error->getMessage(), $this->error->getLine()),
                 $this->error->getCode(),
                 $this->error
             );
         }
     }
 
-    private function getMessagePrefix()
+    private function getMessagePrefix(): string
     {
         return $this->error instanceof \ParseError ? 'Parse error' : 'Fatal error';
     }

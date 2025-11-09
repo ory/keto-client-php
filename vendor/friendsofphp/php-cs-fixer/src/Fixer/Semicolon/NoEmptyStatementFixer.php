@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,19 +17,19 @@ namespace PhpCsFixer\Fixer\Semicolon;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
+use PhpCsFixer\Tokenizer\CT;
 use PhpCsFixer\Tokenizer\Tokens;
 use PhpCsFixer\Tokenizer\TokensAnalyzer;
 
 /**
- * @author SpacePossum
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NoEmptyStatementFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Remove useless (semicolon) statements.',
@@ -42,32 +44,26 @@ final class NoEmptyStatementFixer extends AbstractFixer
     /**
      * {@inheritdoc}
      *
-     * Must run before BracesFixer, CombineConsecutiveUnsetsFixer, MultilineWhitespaceBeforeSemicolonsFixer, NoExtraBlankLinesFixer, NoSinglelineWhitespaceBeforeSemicolonsFixer, NoTrailingWhitespaceFixer, NoUselessElseFixer, NoUselessReturnFixer, NoWhitespaceInBlankLineFixer, ReturnAssignmentFixer, SpaceAfterSemicolonFixer, SwitchCaseSemicolonToColonFixer.
+     * Must run before BracesFixer, CombineConsecutiveUnsetsFixer, EmptyLoopBodyFixer, MultilineWhitespaceBeforeSemicolonsFixer, NoExtraBlankLinesFixer, NoMultipleStatementsPerLineFixer, NoSinglelineWhitespaceBeforeSemicolonsFixer, NoTrailingWhitespaceFixer, NoUselessElseFixer, NoUselessReturnFixer, NoWhitespaceInBlankLineFixer, ReturnAssignmentFixer, SpaceAfterSemicolonFixer, SwitchCaseSemicolonToColonFixer.
      * Must run after NoUselessSprintfFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 40;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(';');
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         for ($index = 0, $count = $tokens->count(); $index < $count; ++$index) {
-            if ($tokens[$index]->isGivenKind([T_BREAK, T_CONTINUE])) {
+            if ($tokens[$index]->isGivenKind([\T_BREAK, \T_CONTINUE])) {
                 $index = $tokens->getNextMeaningfulToken($index);
 
-                if ($tokens[$index]->equals([T_LNUMBER, '1'])) {
+                if ($tokens[$index]->equals([\T_LNUMBER, '1'])) {
                     $tokens->clearTokenAndMergeSurroundingWhitespace($index);
                 }
 
@@ -75,7 +71,7 @@ final class NoEmptyStatementFixer extends AbstractFixer
             }
 
             // skip T_FOR parenthesis to ignore double `;` like `for ($i = 1; ; ++$i) {...}`
-            if ($tokens[$index]->isGivenKind(T_FOR)) {
+            if ($tokens[$index]->isGivenKind(\T_FOR)) {
                 $index = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $tokens->getNextMeaningfulToken($index)) + 1;
 
                 continue;
@@ -88,7 +84,7 @@ final class NoEmptyStatementFixer extends AbstractFixer
             $previousMeaningfulIndex = $tokens->getPrevMeaningfulToken($index);
 
             // A semicolon can always be removed if it follows a semicolon, '{' or opening tag.
-            if ($tokens[$previousMeaningfulIndex]->equalsAny(['{', ';', [T_OPEN_TAG]])) {
+            if ($tokens[$previousMeaningfulIndex]->equalsAny(['{', ';', [\T_OPEN_TAG]])) {
                 $tokens->clearTokenAndMergeSurroundingWhitespace($index);
 
                 continue;
@@ -101,12 +97,17 @@ final class NoEmptyStatementFixer extends AbstractFixer
                 continue;
             }
 
+            $nextIndex = $tokens->getNextMeaningfulToken($index);
+            if (null !== $nextIndex && $tokens[$nextIndex]->isGivenKind(CT::T_PROPERTY_HOOK_BRACE_CLOSE)) {
+                continue;
+            }
+
             // A semicolon might be removed together with its noop statement, for example "<?php 1;"
             $prePreviousMeaningfulIndex = $tokens->getPrevMeaningfulToken($previousMeaningfulIndex);
 
             if (
-                $tokens[$prePreviousMeaningfulIndex]->equalsAny([';', '{', '}', [T_OPEN_TAG]])
-                && $tokens[$previousMeaningfulIndex]->isGivenKind([T_CONSTANT_ENCAPSED_STRING, T_DNUMBER, T_LNUMBER, T_STRING, T_VARIABLE])
+                $tokens[$prePreviousMeaningfulIndex]->equalsAny([';', '{', '}', [\T_OPEN_TAG]])
+                && $tokens[$previousMeaningfulIndex]->isGivenKind([\T_CONSTANT_ENCAPSED_STRING, \T_DNUMBER, \T_LNUMBER, \T_STRING, \T_VARIABLE])
             ) {
                 $tokens->clearTokenAndMergeSurroundingWhitespace($index);
                 $tokens->clearTokenAndMergeSurroundingWhitespace($previousMeaningfulIndex);
@@ -128,38 +129,31 @@ final class NoEmptyStatementFixer extends AbstractFixer
      * - declare (with '{' '}')
      * - namespace (with '{' '}')
      *
-     * @param int $index           Semicolon index
-     * @param int $curlyCloseIndex
+     * @param int $index Semicolon index
      */
-    private function fixSemicolonAfterCurlyBraceClose(Tokens $tokens, $index, $curlyCloseIndex)
+    private function fixSemicolonAfterCurlyBraceClose(Tokens $tokens, int $index, int $curlyCloseIndex): void
     {
-        static $beforeCurlyOpeningKinds = null;
-
-        if (null === $beforeCurlyOpeningKinds) {
-            $beforeCurlyOpeningKinds = [T_ELSE, T_FINALLY, T_NAMESPACE, T_OPEN_TAG];
-        }
-
         $curlyOpeningIndex = $tokens->findBlockStart(Tokens::BLOCK_TYPE_CURLY_BRACE, $curlyCloseIndex);
         $beforeCurlyOpeningIndex = $tokens->getPrevMeaningfulToken($curlyOpeningIndex);
 
-        if ($tokens[$beforeCurlyOpeningIndex]->isGivenKind($beforeCurlyOpeningKinds) || $tokens[$beforeCurlyOpeningIndex]->equalsAny([';', '{', '}'])) {
+        if ($tokens[$beforeCurlyOpeningIndex]->isGivenKind([\T_ELSE, \T_FINALLY, \T_NAMESPACE, \T_OPEN_TAG]) || $tokens[$beforeCurlyOpeningIndex]->equalsAny([';', '{', '}'])) {
             $tokens->clearTokenAndMergeSurroundingWhitespace($index);
 
             return;
         }
 
         // check for namespaces and class, interface and trait definitions
-        if ($tokens[$beforeCurlyOpeningIndex]->isGivenKind(T_STRING)) {
+        if ($tokens[$beforeCurlyOpeningIndex]->isGivenKind(\T_STRING)) {
             $classyTestIndex = $tokens->getPrevMeaningfulToken($beforeCurlyOpeningIndex);
 
-            while ($tokens[$classyTestIndex]->equals(',') || $tokens[$classyTestIndex]->isGivenKind([T_STRING, T_NS_SEPARATOR, T_EXTENDS, T_IMPLEMENTS])) {
+            while ($tokens[$classyTestIndex]->equals(',') || $tokens[$classyTestIndex]->isGivenKind([\T_STRING, \T_NS_SEPARATOR, \T_EXTENDS, \T_IMPLEMENTS])) {
                 $classyTestIndex = $tokens->getPrevMeaningfulToken($classyTestIndex);
             }
 
             $tokensAnalyzer = new TokensAnalyzer($tokens);
 
             if (
-                $tokens[$classyTestIndex]->isGivenKind(T_NAMESPACE)
+                $tokens[$classyTestIndex]->isGivenKind(\T_NAMESPACE)
                 || ($tokens[$classyTestIndex]->isClassy() && !$tokensAnalyzer->isAnonymousClass($classyTestIndex))
             ) {
                 $tokens->clearTokenAndMergeSurroundingWhitespace($index);
@@ -176,17 +170,17 @@ final class NoEmptyStatementFixer extends AbstractFixer
         $openingBraceIndex = $tokens->findBlockStart(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $beforeCurlyOpeningIndex);
         $beforeOpeningBraceIndex = $tokens->getPrevMeaningfulToken($openingBraceIndex);
 
-        if ($tokens[$beforeOpeningBraceIndex]->isGivenKind([T_IF, T_ELSEIF, T_FOR, T_FOREACH, T_WHILE, T_SWITCH, T_CATCH, T_DECLARE])) {
+        if ($tokens[$beforeOpeningBraceIndex]->isGivenKind([\T_IF, \T_ELSEIF, \T_FOR, \T_FOREACH, \T_WHILE, \T_SWITCH, \T_CATCH, \T_DECLARE])) {
             $tokens->clearTokenAndMergeSurroundingWhitespace($index);
 
             return;
         }
 
         // check for function definition
-        if ($tokens[$beforeOpeningBraceIndex]->isGivenKind(T_STRING)) {
+        if ($tokens[$beforeOpeningBraceIndex]->isGivenKind(\T_STRING)) {
             $beforeStringIndex = $tokens->getPrevMeaningfulToken($beforeOpeningBraceIndex);
 
-            if ($tokens[$beforeStringIndex]->isGivenKind(T_FUNCTION)) {
+            if ($tokens[$beforeStringIndex]->isGivenKind(\T_FUNCTION)) {
                 $tokens->clearTokenAndMergeSurroundingWhitespace($index); // implicit return
             }
         }

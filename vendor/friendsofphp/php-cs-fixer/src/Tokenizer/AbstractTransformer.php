@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -18,13 +20,12 @@ use PhpCsFixer\Utils;
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 abstract class AbstractTransformer implements TransformerInterface
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getName()
+    public function getName(): string
     {
         $nameParts = explode('\\', static::class);
         $name = substr(end($nameParts), 0, -\strlen('Transformer'));
@@ -32,16 +33,10 @@ abstract class AbstractTransformer implements TransformerInterface
         return Utils::camelCaseToUnderscore($name);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 0;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    abstract public function getCustomTokens();
+    abstract public function getCustomTokens(): array;
 }

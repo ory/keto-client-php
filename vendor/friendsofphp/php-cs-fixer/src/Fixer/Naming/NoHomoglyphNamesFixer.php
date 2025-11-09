@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,6 +17,7 @@ namespace PhpCsFixer\Fixer\Naming;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Preg;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
@@ -22,6 +25,8 @@ use PhpCsFixer\Tokenizer\Tokens;
 /**
  * @author Fred Cox <mcfedr@gmail.com>
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NoHomoglyphNamesFixer extends AbstractFixer
 {
@@ -43,9 +48,9 @@ final class NoHomoglyphNamesFixer extends AbstractFixer
      * This is not the complete list of unicode homographs, but limited
      * to those you are more likely to have typed/copied by accident
      *
-     * @var array
+     * @var array<string, string>
      */
-    private static $replacements = [
+    private const REPLACEMENTS = [
         'O' => '0',
         '０' => '0',
         'I' => '1',
@@ -190,10 +195,7 @@ final class NoHomoglyphNamesFixer extends AbstractFixer
         'ｚ' => 'z',
     ];
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Replace accidental usage of homoglyphs (non ascii characters) in names.',
@@ -203,40 +205,26 @@ final class NoHomoglyphNamesFixer extends AbstractFixer
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isRisky()
+    public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isAnyTokenKindsFound([T_VARIABLE, T_STRING]);
+        return $tokens->isAnyTokenKindsFound([\T_VARIABLE, \T_STRING]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         foreach ($tokens as $index => $token) {
-            if (!$token->isGivenKind([T_VARIABLE, T_STRING])) {
+            if (!$token->isGivenKind([\T_VARIABLE, \T_STRING])) {
                 continue;
             }
 
-            $replaced = Preg::replaceCallback('/[^[:ascii:]]/u', static function ($matches) {
-                return isset(self::$replacements[$matches[0]])
-                    ? self::$replacements[$matches[0]]
-                    : $matches[0]
-                ;
-            }, $token->getContent(), -1, $count);
+            $replaced = Preg::replaceCallback('/[^[:ascii:]]/u', static fn (array $matches): string => self::REPLACEMENTS[$matches[0]] ?? $matches[0], $token->getContent(), -1, $count);
 
-            if ($count) {
+            if ($count > 0) {
                 $tokens->offsetSet($index, new Token([$token->getId(), $replaced]));
             }
         }

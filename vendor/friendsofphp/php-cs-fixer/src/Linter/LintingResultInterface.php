@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,11 +16,13 @@ namespace PhpCsFixer\Linter;
 
 /**
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 interface LintingResultInterface
 {
     /**
      * Check if linting process was successful and raise LintingException if not.
      */
-    public function check();
+    public function check(): void;
 }

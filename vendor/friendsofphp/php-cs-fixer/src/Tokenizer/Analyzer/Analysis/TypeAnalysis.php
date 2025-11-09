@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -13,112 +15,103 @@
 namespace PhpCsFixer\Tokenizer\Analyzer\Analysis;
 
 /**
+ * @readonly
+ *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
-final class TypeAnalysis implements StartEndTokenAwareAnalysis
+final class TypeAnalysis
 {
     /**
      * This list contains soft and hard reserved types that can be used or will be used by PHP at some point.
      *
      * More info:
      *
+     * @var non-empty-list<string>
+     *
      * @see https://php.net/manual/en/functions.arguments.php#functions.arguments.type-declaration.types
      * @see https://php.net/manual/en/reserved.other-reserved-words.php
-     * @see https://php.net/manual/en/language.pseudo-types.php
-     *
-     * @var array
      */
-    private static $reservedTypes = [
+    private const RESERVED_TYPES = [
         'array',
         'bool',
         'callable',
+        'false',
+        'float',
         'int',
         'iterable',
-        'float',
+        'list',
         'mixed',
-        'numeric',
+        'never',
+        'null',
         'object',
+        'parent',
         'resource',
         'self',
+        'static',
         'string',
+        'true',
         'void',
     ];
 
-    /**
-     * @var string
-     */
-    private $name;
+    private string $name;
+
+    private ?int $startIndex;
+
+    private ?int $endIndex;
+
+    private bool $nullable;
 
     /**
-     * @var int
+     * @param ($startIndex is null ? null : int) $endIndex
      */
-    private $startIndex;
-
-    /**
-     * @var int
-     */
-    private $endIndex;
-
-    /**
-     * @var bool
-     */
-    private $nullable;
-
-    /**
-     * @param string $name
-     * @param int    $startIndex
-     * @param int    $endIndex
-     */
-    public function __construct($name, $startIndex, $endIndex)
+    public function __construct(string $name, ?int $startIndex = null, ?int $endIndex = null)
     {
-        $this->name = $name;
-        $this->nullable = false;
-
-        if (0 === strpos($name, '?')) {
+        if (str_starts_with($name, '?')) {
             $this->name = substr($name, 1);
             $this->nullable = true;
+        } elseif (\PHP_VERSION_ID >= 8_00_00) {
+            $this->name = $name;
+            $this->nullable = \in_array('null', array_map('trim', explode('|', strtolower($name))), true);
+        } else {
+            $this->name = $name;
+            $this->nullable = false;
         }
 
         $this->startIndex = $startIndex;
         $this->endIndex = $endIndex;
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @return int
-     */
-    public function getStartIndex()
+    public function getStartIndex(): int
     {
+        if (null === $this->startIndex) {
+            throw new \RuntimeException('TypeAnalysis: no start index.');
+        }
+
         return $this->startIndex;
     }
 
-    /**
-     * @return int
-     */
-    public function getEndIndex()
+    public function getEndIndex(): int
     {
+        if (null === $this->endIndex) {
+            throw new \RuntimeException('TypeAnalysis: no end index.');
+        }
+
         return $this->endIndex;
     }
 
-    /**
-     * @return bool
-     */
-    public function isReservedType()
+    public function isReservedType(): bool
     {
-        return \in_array($this->name, self::$reservedTypes, true);
+        return \in_array(strtolower($this->name), self::RESERVED_TYPES, true);
     }
 
-    /**
-     * @return bool
-     */
-    public function isNullable()
+    public function isNullable(): bool
     {
         return $this->nullable;
     }

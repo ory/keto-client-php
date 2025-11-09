@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,6 +17,7 @@ namespace PhpCsFixer\Tokenizer\Analyzer;
 use PhpCsFixer\Tokenizer\Analyzer\Analysis\ArgumentAnalysis;
 use PhpCsFixer\Tokenizer\Analyzer\Analysis\TypeAnalysis;
 use PhpCsFixer\Tokenizer\CT;
+use PhpCsFixer\Tokenizer\FCT;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
@@ -22,36 +25,32 @@ use PhpCsFixer\Tokenizer\Tokens;
  * @author Vladimir Reznichenko <kalessil@gmail.com>
  *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class ArgumentsAnalyzer
 {
+    private const ARGUMENT_INFO_SKIP_TYPES = [\T_ELLIPSIS, \T_FINAL, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PUBLIC, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PROTECTED, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PRIVATE, FCT::T_READONLY, FCT::T_PRIVATE_SET, FCT::T_PROTECTED_SET, FCT::T_PUBLIC_SET];
+
     /**
      * Count amount of parameters in a function/method reference.
-     *
-     * @param int $openParenthesis
-     * @param int $closeParenthesis
-     *
-     * @return int
      */
-    public function countArguments(Tokens $tokens, $openParenthesis, $closeParenthesis)
+    public function countArguments(Tokens $tokens, int $openParenthesis, int $closeParenthesis): int
     {
         return \count($this->getArguments($tokens, $openParenthesis, $closeParenthesis));
     }
 
     /**
-     * Returns start and end token indexes of arguments.
+     * Returns start and end token indices of arguments.
      *
      * Returns an array with each key being the first token of an
      * argument and the value the last. Including non-function tokens
      * such as comments and white space tokens, but without the separation
      * tokens like '(', ',' and ')'.
      *
-     * @param int $openParenthesis
-     * @param int $closeParenthesis
-     *
      * @return array<int, int>
      */
-    public function getArguments(Tokens $tokens, $openParenthesis, $closeParenthesis)
+    public function getArguments(Tokens $tokens, int $openParenthesis, int $closeParenthesis): array
     {
         $arguments = [];
         $firstSensibleToken = $tokens->getNextMeaningfulToken($openParenthesis);
@@ -91,13 +90,7 @@ final class ArgumentsAnalyzer
         return $arguments;
     }
 
-    /**
-     * @param int $argumentStart
-     * @param int $argumentEnd
-     *
-     * @return ArgumentAnalysis
-     */
-    public function getArgumentInfo(Tokens $tokens, $argumentStart, $argumentEnd)
+    public function getArgumentInfo(Tokens $tokens, int $argumentStart, int $argumentEnd): ArgumentAnalysis
     {
         $info = [
             'default' => null,
@@ -113,16 +106,22 @@ final class ArgumentsAnalyzer
         for ($index = $argumentStart; $index <= $argumentEnd; ++$index) {
             $token = $tokens[$index];
 
+            if ($token->isGivenKind(FCT::T_ATTRIBUTE)) {
+                $index = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_ATTRIBUTE, $index);
+
+                continue;
+            }
+
             if (
                 $token->isComment()
                 || $token->isWhitespace()
-                || $token->isGivenKind([T_ELLIPSIS, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PUBLIC, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PROTECTED, CT::T_CONSTRUCTOR_PROPERTY_PROMOTION_PRIVATE])
+                || $token->isGivenKind(self::ARGUMENT_INFO_SKIP_TYPES)
                 || $token->equals('&')
             ) {
                 continue;
             }
 
-            if ($token->isGivenKind(T_VARIABLE)) {
+            if ($token->isGivenKind(\T_VARIABLE)) {
                 $sawName = true;
                 $info['name_index'] = $index;
                 $info['name'] = $token->getContent();
@@ -131,12 +130,6 @@ final class ArgumentsAnalyzer
             }
 
             if ($token->equals('=')) {
-                continue;
-            }
-
-            if (\defined('T_ATTRIBUTE') && $token->isGivenKind(T_ATTRIBUTE)) {
-                $index = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_ATTRIBUTE, $index);
-
                 continue;
             }
 
@@ -149,11 +142,15 @@ final class ArgumentsAnalyzer
             }
         }
 
+        if (null === $info['name']) {
+            $info['type'] = null;
+        }
+
         return new ArgumentAnalysis(
             $info['name'],
             $info['name_index'],
             $info['default'],
-            $info['type'] ? new TypeAnalysis($info['type'], $info['type_index_start'], $info['type_index_end']) : null
+            null !== $info['type'] ? new TypeAnalysis($info['type'], $info['type_index_start'], $info['type_index_end']) : null
         );
     }
 }

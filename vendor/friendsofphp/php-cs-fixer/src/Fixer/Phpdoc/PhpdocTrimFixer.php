@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,31 +17,37 @@ namespace PhpCsFixer\Fixer\Phpdoc;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Preg;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
- * @author Graham Campbell <graham@alt-three.com>
+ * @author Graham Campbell <hello@gjcampbell.co.uk>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class PhpdocTrimFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'PHPDoc should start and end with content, excluding the very first and last line of the docblocks.',
-            [new CodeSample('<?php
-/**
- *
- * Foo must be final class.
- *
- *
- */
-final class Foo {}
-')]
+            [
+                new CodeSample(
+                    <<<'PHP'
+                        <?php
+                        /**
+                         *
+                         * Foo must be final class.
+                         *
+                         *
+                         */
+                        final class Foo {}
+
+                        PHP
+                ),
+            ]
         );
     }
 
@@ -47,28 +55,22 @@ final class Foo {}
      * {@inheritdoc}
      *
      * Must run before PhpdocAlignFixer.
-     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, PhpUnitTestAnnotationFixer, PhpdocIndentFixer, PhpdocNoAccessFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocOrderFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
+     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, PhpUnitAttributesFixer, PhpUnitTestAnnotationFixer, PhpdocIndentFixer, PhpdocNoAccessFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocOrderFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return -5;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isTokenKindFound(T_DOC_COMMENT);
+        return $tokens->isTokenKindFound(\T_DOC_COMMENT);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         foreach ($tokens as $index => $token) {
-            if (!$token->isGivenKind(T_DOC_COMMENT)) {
+            if (!$token->isGivenKind(\T_DOC_COMMENT)) {
                 continue;
             }
 
@@ -77,18 +79,14 @@ final class Foo {}
             // we need re-parse the docblock after fixing the start before
             // fixing the end in order for the lines to be correctly indexed
             $content = $this->fixEnd($content);
-            $tokens[$index] = new Token([T_DOC_COMMENT, $content]);
+            $tokens[$index] = new Token([\T_DOC_COMMENT, $content]);
         }
     }
 
     /**
      * Make sure the first useful line starts immediately after the first line.
-     *
-     * @param string $content
-     *
-     * @return string
      */
-    private function fixStart($content)
+    private function fixStart(string $content): string
     {
         return Preg::replace(
             '~
@@ -106,12 +104,8 @@ final class Foo {}
 
     /**
      * Make sure the last useful line is immediately before the final line.
-     *
-     * @param string $content
-     *
-     * @return string
      */
-    private function fixEnd($content)
+    private function fixEnd(string $content): string
     {
         return Preg::replace(
             '~

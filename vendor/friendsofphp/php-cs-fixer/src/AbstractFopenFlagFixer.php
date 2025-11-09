@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -18,22 +20,16 @@ use PhpCsFixer\Tokenizer\Tokens;
 /**
  * @internal
  *
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 abstract class AbstractFopenFlagFixer extends AbstractFunctionReferenceFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isAllTokenKindsFound([T_STRING, T_CONSTANT_ENCAPSED_STRING]);
+        return $tokens->isAllTokenKindsFound([\T_STRING, \T_CONSTANT_ENCAPSED_STRING]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $argumentsAnalyzer = new ArgumentsAnalyzer();
 
@@ -71,14 +67,9 @@ abstract class AbstractFopenFlagFixer extends AbstractFunctionReferenceFixer
         }
     }
 
-    abstract protected function fixFopenFlagToken(Tokens $tokens, $argumentStartIndex, $argumentEndIndex);
+    abstract protected function fixFopenFlagToken(Tokens $tokens, int $argumentStartIndex, int $argumentEndIndex): void;
 
-    /**
-     * @param string $mode
-     *
-     * @return bool
-     */
-    protected function isValidModeString($mode)
+    protected function isValidModeString(string $mode): bool
     {
         $modeLength = \strlen($mode);
         if ($modeLength < 1 || $modeLength > 13) { // 13 === length 'r+w+a+x+c+etb'

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,6 +16,7 @@ namespace PhpCsFixer\Tokenizer\Transformer;
 
 use PhpCsFixer\Tokenizer\AbstractTransformer;
 use PhpCsFixer\Tokenizer\CT;
+use PhpCsFixer\Tokenizer\FCT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -23,37 +26,36 @@ use PhpCsFixer\Tokenizer\Tokens;
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class TypeColonTransformer extends AbstractTransformer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getPriority()
+    public function getPriority(): int
     {
         // needs to run after ReturnRefTransformer and UseTransformer
         // and before TypeAlternationTransformer
         return -10;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getRequiredPhpVersionId()
+    public function getRequiredPhpVersionId(): int
     {
-        return 70000;
+        return 7_00_00;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function process(Tokens $tokens, Token $token, $index)
+    public function process(Tokens $tokens, Token $token, int $index): void
     {
         if (!$token->equals(':')) {
             return;
         }
 
         $endIndex = $tokens->getPrevMeaningfulToken($index);
+
+        if ($tokens[$tokens->getPrevMeaningfulToken($endIndex)]->isGivenKind(FCT::T_ENUM)) {
+            $tokens[$index] = new Token([CT::T_TYPE_COLON, ':']);
+
+            return;
+        }
 
         if (!$tokens[$endIndex]->equals(')')) {
             return;
@@ -64,26 +66,17 @@ final class TypeColonTransformer extends AbstractTransformer
         $prevToken = $tokens[$prevIndex];
 
         // if this could be a function name we need to take one more step
-        if ($prevToken->isGivenKind(T_STRING)) {
+        if ($prevToken->isGivenKind(\T_STRING)) {
             $prevIndex = $tokens->getPrevMeaningfulToken($prevIndex);
             $prevToken = $tokens[$prevIndex];
         }
 
-        $prevKinds = [T_FUNCTION, CT::T_RETURN_REF, CT::T_USE_LAMBDA];
-
-        if (\PHP_VERSION_ID >= 70400) {
-            $prevKinds[] = T_FN;
-        }
-
-        if ($prevToken->isGivenKind($prevKinds)) {
+        if ($prevToken->isGivenKind([\T_FUNCTION, CT::T_RETURN_REF, CT::T_USE_LAMBDA, \T_FN])) {
             $tokens[$index] = new Token([CT::T_TYPE_COLON, ':']);
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getCustomTokens()
+    public function getCustomTokens(): array
     {
         return [CT::T_TYPE_COLON];
     }

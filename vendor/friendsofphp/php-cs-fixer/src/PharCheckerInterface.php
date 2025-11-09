@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,13 +16,13 @@ namespace PhpCsFixer;
 
 /**
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 interface PharCheckerInterface
 {
     /**
-     * @param string $filename
-     *
      * @return null|string the invalidity reason if any, null otherwise
      */
-    public function checkFileValidity($filename);
+    public function checkFileValidity(string $filename): ?string;
 }

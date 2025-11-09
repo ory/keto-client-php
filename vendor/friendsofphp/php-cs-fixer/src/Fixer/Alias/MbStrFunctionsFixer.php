@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -12,22 +14,35 @@
 
 namespace PhpCsFixer\Fixer\Alias;
 
-use PhpCsFixer\AbstractFunctionReferenceFixer;
+use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Analyzer\ArgumentsAnalyzer;
+use PhpCsFixer\Tokenizer\Analyzer\FunctionsAnalyzer;
+use PhpCsFixer\Tokenizer\CT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
  * @author Filippo Tessarotto <zoeslam@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
-final class MbStrFunctionsFixer extends AbstractFunctionReferenceFixer
+final class MbStrFunctionsFixer extends AbstractFixer
 {
     /**
-     * @var array the list of the string-related function names and their mb_ equivalent
+     * list of the string-related function names and their mb_ equivalent.
+     *
+     * @var array<
+     *     string,
+     *     array{
+     *         alternativeName: string,
+     *         argumentCount: list<int>,
+     *     },
+     * >
      */
-    private static $functionsMap = [
+    private static array $functionsMap = [
         'str_split' => ['alternativeName' => 'mb_str_split', 'argumentCount' => [1, 2, 3]],
         'stripos' => ['alternativeName' => 'mb_stripos', 'argumentCount' => [2, 3]],
         'stristr' => ['alternativeName' => 'mb_stristr', 'argumentCount' => [2, 3]],
@@ -44,87 +59,126 @@ final class MbStrFunctionsFixer extends AbstractFunctionReferenceFixer
     ];
 
     /**
-     * @var array<string, array>
+     * @var array<
+     *     string,
+     *     array{
+     *         alternativeName: string,
+     *         argumentCount: list<int>,
+     *     },
+     * >
      */
-    private $functions;
+    private array $functions;
 
     public function __construct()
     {
         parent::__construct();
 
+        if (\PHP_VERSION_ID >= 8_03_00) {
+            self::$functionsMap['str_pad'] = ['alternativeName' => 'mb_str_pad', 'argumentCount' => [1, 2, 3, 4]];
+        }
+
+        if (\PHP_VERSION_ID >= 8_04_00) {
+            self::$functionsMap['trim'] = ['alternativeName' => 'mb_trim', 'argumentCount' => [1, 2]];
+            self::$functionsMap['ltrim'] = ['alternativeName' => 'mb_ltrim', 'argumentCount' => [1, 2]];
+            self::$functionsMap['rtrim'] = ['alternativeName' => 'mb_rtrim', 'argumentCount' => [1, 2]];
+        }
+
         $this->functions = array_filter(
             self::$functionsMap,
-            static function (array $mapping) {
-                return \function_exists($mapping['alternativeName']) && (new \ReflectionFunction($mapping['alternativeName']))->isInternal();
-            }
+            static fn (array $mapping): bool => (new \ReflectionFunction($mapping['alternativeName']))->isInternal()
         );
+    }
+
+    public function isCandidate(Tokens $tokens): bool
+    {
+        return $tokens->isTokenKindFound(\T_STRING);
+    }
+
+    public function isRisky(): bool
+    {
+        return true;
     }
 
     /**
      * {@inheritdoc}
+     *
+     * Must run before NativeFunctionInvocationFixer.
      */
-    public function getDefinition()
+    public function getPriority(): int
+    {
+        return 2;
+    }
+
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Replace non multibyte-safe functions with corresponding mb function.',
             [
                 new CodeSample(
-                    '<?php
-$a = strlen($a);
-$a = strpos($a, $b);
-$a = strrpos($a, $b);
-$a = substr($a, $b);
-$a = strtolower($a);
-$a = strtoupper($a);
-$a = stripos($a, $b);
-$a = strripos($a, $b);
-$a = strstr($a, $b);
-$a = stristr($a, $b);
-$a = strrchr($a, $b);
-$a = substr_count($a, $b);
-'
+                    <<<'PHP'
+                        <?php
+                        $a = strlen($a);
+                        $a = strpos($a, $b);
+                        $a = strrpos($a, $b);
+                        $a = substr($a, $b);
+                        $a = strtolower($a);
+                        $a = strtoupper($a);
+                        $a = stripos($a, $b);
+                        $a = strripos($a, $b);
+                        $a = strstr($a, $b);
+                        $a = stristr($a, $b);
+                        $a = strrchr($a, $b);
+                        $a = substr_count($a, $b);
+
+                        PHP
                 ),
             ],
             null,
-            'Risky when any of the functions are overridden.'
+            'Risky when any of the functions are overridden, or when relying on the string byte size rather than its length in characters.'
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
-    {
-        return $tokens->isTokenKindFound(T_STRING);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $argumentsAnalyzer = new ArgumentsAnalyzer();
-        foreach ($this->functions as $functionIdentity => $functionReplacement) {
-            $currIndex = 0;
-            while (null !== $currIndex) {
-                // try getting function reference and translate boundaries for humans
-                $boundaries = $this->find($functionIdentity, $tokens, $currIndex, $tokens->count() - 1);
-                if (null === $boundaries) {
-                    // next function search, as current one not found
-                    continue 2;
-                }
+        $functionsAnalyzer = new FunctionsAnalyzer();
 
-                list($functionName, $openParenthesis, $closeParenthesis) = $boundaries;
-                $count = $argumentsAnalyzer->countArguments($tokens, $openParenthesis, $closeParenthesis);
-                if (!\in_array($count, $functionReplacement['argumentCount'], true)) {
-                    continue 2;
-                }
-
-                // analysing cursor shift, so nested calls could be processed
-                $currIndex = $openParenthesis;
-
-                $tokens[$functionName] = new Token([T_STRING, $functionReplacement['alternativeName']]);
+        for ($index = $tokens->count() - 1; $index > 0; --$index) {
+            if (!$tokens[$index]->isGivenKind(\T_STRING)) {
+                continue;
             }
+
+            $lowercasedContent = strtolower($tokens[$index]->getContent());
+            if (!isset($this->functions[$lowercasedContent])) {
+                continue;
+            }
+
+            // is it a global function call?
+            if ($functionsAnalyzer->isGlobalFunctionCall($tokens, $index)) {
+                $openParenthesis = $tokens->getNextMeaningfulToken($index);
+                $closeParenthesis = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $openParenthesis);
+                $numberOfArguments = $argumentsAnalyzer->countArguments($tokens, $openParenthesis, $closeParenthesis);
+                if (!\in_array($numberOfArguments, $this->functions[$lowercasedContent]['argumentCount'], true)) {
+                    continue;
+                }
+                $tokens[$index] = new Token([\T_STRING, $this->functions[$lowercasedContent]['alternativeName']]);
+
+                continue;
+            }
+
+            // is it a global function import?
+            $functionIndex = $tokens->getPrevMeaningfulToken($index);
+            if ($tokens[$functionIndex]->isGivenKind(\T_NS_SEPARATOR)) {
+                $functionIndex = $tokens->getPrevMeaningfulToken($functionIndex);
+            }
+            if (!$tokens[$functionIndex]->isGivenKind(CT::T_FUNCTION_IMPORT)) {
+                continue;
+            }
+            $useIndex = $tokens->getPrevMeaningfulToken($functionIndex);
+            if (!$tokens[$useIndex]->isGivenKind(\T_USE)) {
+                continue;
+            }
+            $tokens[$index] = new Token([\T_STRING, $this->functions[$lowercasedContent]['alternativeName']]);
         }
     }
 }

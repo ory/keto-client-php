@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,18 +17,16 @@ namespace PhpCsFixer\Fixer\CastNotation;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NoUnsetCastFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Variables must be set `null` instead of using `(unset)` casting.',
@@ -34,12 +34,9 @@ final class NoUnsetCastFixer extends AbstractFixer
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isTokenKindFound(T_UNSET_CAST);
+        return $tokens->isTokenKindFound(\T_UNSET_CAST);
     }
 
     /**
@@ -47,27 +44,21 @@ final class NoUnsetCastFixer extends AbstractFixer
      *
      * Must run before BinaryOperatorSpacesFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 0;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         for ($index = \count($tokens) - 1; $index > 0; --$index) {
-            if ($tokens[$index]->isGivenKind(T_UNSET_CAST)) {
+            if ($tokens[$index]->isGivenKind(\T_UNSET_CAST)) {
                 $this->fixUnsetCast($tokens, $index);
             }
         }
     }
 
-    /**
-     * @param int $index
-     */
-    private function fixUnsetCast(Tokens $tokens, $index)
+    private function fixUnsetCast(Tokens $tokens, int $index): void
     {
         $assignmentIndex = $tokens->getPrevMeaningfulToken($index);
         if (null === $assignmentIndex || !$tokens[$assignmentIndex]->equals('=')) {
@@ -75,12 +66,12 @@ final class NoUnsetCastFixer extends AbstractFixer
         }
 
         $varIndex = $tokens->getNextMeaningfulToken($index);
-        if (null === $varIndex || !$tokens[$varIndex]->isGivenKind(T_VARIABLE)) {
+        if (null === $varIndex || !$tokens[$varIndex]->isGivenKind(\T_VARIABLE)) {
             return;
         }
 
         $afterVar = $tokens->getNextMeaningfulToken($varIndex);
-        if (null === $afterVar || !$tokens[$afterVar]->equalsAny([';', [T_CLOSE_TAG]])) {
+        if (null === $afterVar || !$tokens[$afterVar]->equalsAny([';', [\T_CLOSE_TAG]])) {
             return;
         }
 
@@ -91,10 +82,10 @@ final class NoUnsetCastFixer extends AbstractFixer
 
         ++$assignmentIndex;
         if (!$nextIsWhiteSpace) {
-            $tokens->insertAt($assignmentIndex, new Token([T_WHITESPACE, ' ']));
+            $tokens->insertAt($assignmentIndex, new Token([\T_WHITESPACE, ' ']));
         }
 
         ++$assignmentIndex;
-        $tokens->insertAt($assignmentIndex, new Token([T_STRING, 'null']));
+        $tokens->insertAt($assignmentIndex, new Token([\T_STRING, 'null']));
     }
 }

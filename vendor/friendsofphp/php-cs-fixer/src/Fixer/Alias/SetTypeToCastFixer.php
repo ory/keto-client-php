@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,29 +17,29 @@ namespace PhpCsFixer\Fixer\Alias;
 use PhpCsFixer\AbstractFunctionReferenceFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Analyzer\ArgumentsAnalyzer;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
- * @author SpacePossum
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class SetTypeToCastFixer extends AbstractFunctionReferenceFixer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Cast shall be used, not `settype`.',
             [
                 new CodeSample(
-                    '<?php
-settype($foo, "integer");
-settype($bar, "string");
-settype($bar, "null");
-'
+                    <<<'PHP'
+                        <?php
+                        settype($foo, "integer");
+                        settype($bar, "string");
+                        settype($bar, "null");
+
+                        PHP
                 ),
             ],
             null,
@@ -47,27 +49,31 @@ settype($bar, "null");
 
     /**
      * {@inheritdoc}
+     *
+     * Must run after NoBinaryStringFixer, NoUselessConcatOperatorFixer.
      */
-    public function isCandidate(Tokens $tokens)
+    public function getPriority(): int
     {
-        return $tokens->isAllTokenKindsFound([T_CONSTANT_ENCAPSED_STRING, T_STRING, T_VARIABLE]);
+        return 0;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
+    {
+        return $tokens->isAllTokenKindsFound([\T_CONSTANT_ENCAPSED_STRING, \T_STRING, \T_VARIABLE]);
+    }
+
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $map = [
-            'array' => [T_ARRAY_CAST, '(array)'],
-            'bool' => [T_BOOL_CAST, '(bool)'],
-            'boolean' => [T_BOOL_CAST, '(bool)'],
-            'double' => [T_DOUBLE_CAST, '(float)'],
-            'float' => [T_DOUBLE_CAST, '(float)'],
-            'int' => [T_INT_CAST, '(int)'],
-            'integer' => [T_INT_CAST, '(int)'],
-            'object' => [T_OBJECT_CAST, '(object)'],
-            'string' => [T_STRING_CAST, '(string)'],
+            'array' => [\T_ARRAY_CAST, '(array)'],
+            'bool' => [\T_BOOL_CAST, '(bool)'],
+            'boolean' => [\T_BOOL_CAST, '(bool)'],
+            'double' => [\T_DOUBLE_CAST, '(float)'],
+            'float' => [\T_DOUBLE_CAST, '(float)'],
+            'int' => [\T_INT_CAST, '(int)'],
+            'integer' => [\T_INT_CAST, '(int)'],
+            'object' => [\T_OBJECT_CAST, '(object)'],
+            'string' => [\T_STRING_CAST, '(string)'],
             // note: `'null' is dealt with later on
         ];
 
@@ -83,7 +89,7 @@ settype($bar, "null");
 
             $prev = $tokens->getPrevMeaningfulToken($functionNameIndex);
 
-            if (!$tokens[$prev]->equalsAny([';', '{', '}', [T_OPEN_TAG]])) {
+            if (!$tokens[$prev]->equalsAny([';', '{', '}', [\T_OPEN_TAG]])) {
                 continue; // return value of the function is used
             }
 
@@ -96,7 +102,7 @@ settype($bar, "null");
                 $firstArgumentStart = $tokens->getNextMeaningfulToken($firstArgumentStart);
             }
 
-            if (!$tokens[$firstArgumentStart]->isGivenKind(T_VARIABLE)) {
+            if (!$tokens[$firstArgumentStart]->isGivenKind(\T_VARIABLE)) {
                 continue; // settype only works with variables pass by reference, function must be overridden
             }
 
@@ -117,7 +123,7 @@ settype($bar, "null");
             }
 
             if (
-                !$tokens[$secondArgumentStart]->isGivenKind(T_CONSTANT_ENCAPSED_STRING)
+                !$tokens[$secondArgumentStart]->isGivenKind(\T_CONSTANT_ENCAPSED_STRING)
                 || $tokens->getNextMeaningfulToken($secondArgumentStart) < $secondArgumentEnd
             ) {
                 continue; // second argument is of the wrong type or is a (complex) statement of some sort (function is overridden)
@@ -125,7 +131,7 @@ settype($bar, "null");
 
             // --- Test type ------------------------------
 
-            $type = strtolower(trim($tokens[$secondArgumentStart]->getContent(), '"\'"'));
+            $type = strtolower(trim($tokens[$secondArgumentStart]->getContent(), '"\''));
 
             if ('null' !== $type && !isset($map[$type])) {
                 continue; // we don't know how to map
@@ -146,14 +152,17 @@ settype($bar, "null");
             );
 
             if ('null' === $type) {
-                $this->findSettypeNullCall($tokens, $functionNameIndex, $argumentToken);
+                $this->fixSettypeNullCall($tokens, $functionNameIndex, $argumentToken);
             } else {
                 $this->fixSettypeCall($tokens, $functionNameIndex, $argumentToken, new Token($map[$type]));
             }
         }
     }
 
-    private function findSettypeCalls(Tokens $tokens)
+    /**
+     * @return list<array{int, int, int}>
+     */
+    private function findSettypeCalls(Tokens $tokens): array
     {
         $candidates = [];
 
@@ -171,23 +180,15 @@ settype($bar, "null");
         return $candidates;
     }
 
-    /**
-     * @param int $functionNameIndex
-     * @param int $openParenthesisIndex
-     * @param int $firstArgumentStart
-     * @param int $commaIndex
-     * @param int $secondArgumentStart
-     * @param int $closeParenthesisIndex
-     */
     private function removeSettypeCall(
         Tokens $tokens,
-        $functionNameIndex,
-        $openParenthesisIndex,
-        $firstArgumentStart,
-        $commaIndex,
-        $secondArgumentStart,
-        $closeParenthesisIndex
-    ) {
+        int $functionNameIndex,
+        int $openParenthesisIndex,
+        int $firstArgumentStart,
+        int $commaIndex,
+        int $secondArgumentStart,
+        int $closeParenthesisIndex
+    ): void {
         $tokens->clearTokenAndMergeSurroundingWhitespace($closeParenthesisIndex);
         $prevIndex = $tokens->getPrevMeaningfulToken($closeParenthesisIndex);
         if ($tokens[$prevIndex]->equals(',')) {
@@ -201,24 +202,21 @@ settype($bar, "null");
         $tokens->clearEmptyTokens();
     }
 
-    /**
-     * @param int $functionNameIndex
-     */
     private function fixSettypeCall(
         Tokens $tokens,
-        $functionNameIndex,
+        int $functionNameIndex,
         Token $argumentToken,
         Token $castToken
-    ) {
+    ): void {
         $tokens->insertAt(
             $functionNameIndex,
             [
                 clone $argumentToken,
-                new Token([T_WHITESPACE, ' ']),
+                new Token([\T_WHITESPACE, ' ']),
                 new Token('='),
-                new Token([T_WHITESPACE, ' ']),
+                new Token([\T_WHITESPACE, ' ']),
                 $castToken,
-                new Token([T_WHITESPACE, ' ']),
+                new Token([\T_WHITESPACE, ' ']),
                 clone $argumentToken,
             ]
         );
@@ -226,22 +224,19 @@ settype($bar, "null");
         $tokens->removeTrailingWhitespace($functionNameIndex + 6); // 6 = number of inserted tokens -1 for offset correction
     }
 
-    /**
-     * @param int $functionNameIndex
-     */
-    private function findSettypeNullCall(
+    private function fixSettypeNullCall(
         Tokens $tokens,
-        $functionNameIndex,
+        int $functionNameIndex,
         Token $argumentToken
-    ) {
+    ): void {
         $tokens->insertAt(
             $functionNameIndex,
             [
                 clone $argumentToken,
-                new Token([T_WHITESPACE, ' ']),
+                new Token([\T_WHITESPACE, ' ']),
                 new Token('='),
-                new Token([T_WHITESPACE, ' ']),
-                new Token([T_STRING, 'null']),
+                new Token([\T_WHITESPACE, ' ']),
+                new Token([\T_STRING, 'null']),
             ]
         );
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -13,7 +15,7 @@
 namespace PhpCsFixer\Linter;
 
 use PhpCsFixer\FileReader;
-use PhpCsFixer\Tokenizer\CodeHasher;
+use PhpCsFixer\Hasher;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
@@ -21,56 +23,37 @@ use PhpCsFixer\Tokenizer\Tokens;
  *
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
+ * @readonly
+ *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class TokenizerLinter implements LinterInterface
 {
-    public function __construct()
-    {
-        if (
-            // @TODO: drop condition when PHP 7.0+ is required
-            false === \defined('TOKEN_PARSE')
-            // @TODO: drop condition when PHP 7.3+ is required
-            || false === class_exists(\CompileError::class)
-        ) {
-            throw new UnavailableLinterException('Cannot use tokenizer as linter.');
-        }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function isAsync()
+    public function isAsync(): bool
     {
         return false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function lintFile($path)
+    public function lintFile(string $path): LintingResultInterface
     {
         return $this->lintSource(FileReader::createSingleton()->read($path));
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function lintSource($source)
+    public function lintSource(string $source): LintingResultInterface
     {
         try {
             // To lint, we will parse the source into Tokens.
             // During that process, it might throw a ParseError or CompileError.
             // If it won't, cache of tokenized version of source will be kept, which is great for Runner.
             // Yet, first we need to clear already existing cache to not hit it and lint the code indeed.
-            $codeHash = CodeHasher::calculateCodeHash($source);
+            $codeHash = Hasher::calculate($source);
             Tokens::clearCache($codeHash);
             Tokens::fromCode($source);
 
             return new TokenizerLintingResult();
-        } catch (\ParseError $e) {
-            return new TokenizerLintingResult($e);
-        } catch (\CompileError $e) {
+        } catch (\CompileError|\ParseError $e) {
             return new TokenizerLintingResult($e);
         }
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -16,54 +18,53 @@ use PhpCsFixer\Tokenizer\Analyzer\Analysis\ArgumentAnalysis;
 use PhpCsFixer\Tokenizer\Analyzer\Analysis\NamespaceUseAnalysis;
 use PhpCsFixer\Tokenizer\Analyzer\Analysis\TypeAnalysis;
 use PhpCsFixer\Tokenizer\CT;
+use PhpCsFixer\Tokenizer\FCT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class FunctionsAnalyzer
 {
+    private const POSSIBLE_KINDS = [
+        \T_DOUBLE_COLON, \T_FUNCTION, CT::T_NAMESPACE_OPERATOR, \T_NEW, CT::T_RETURN_REF, \T_STRING, \T_OBJECT_OPERATOR, FCT::T_NULLSAFE_OBJECT_OPERATOR, FCT::T_ATTRIBUTE];
+
     /**
-     * @var array
+     * @var array{tokens: string, imports: list<NamespaceUseAnalysis>, declarations: list<int>}
      */
-    private $functionsAnalysis = ['tokens' => '', 'imports' => [], 'declarations' => []];
+    private array $functionsAnalysis = ['tokens' => '', 'imports' => [], 'declarations' => []];
 
     /**
      * Important: risky because of the limited (file) scope of the tool.
-     *
-     * @param int $index
-     *
-     * @return bool
      */
-    public function isGlobalFunctionCall(Tokens $tokens, $index)
+    public function isGlobalFunctionCall(Tokens $tokens, int $index): bool
     {
-        if (!$tokens[$index]->isGivenKind(T_STRING)) {
+        if (!$tokens[$index]->isGivenKind(\T_STRING)) {
             return false;
         }
 
-        $nextIndex = $tokens->getNextMeaningfulToken($index);
+        $openParenthesisIndex = $tokens->getNextMeaningfulToken($index);
 
-        if (!$tokens[$nextIndex]->equals('(')) {
+        if (!$tokens[$openParenthesisIndex]->equals('(')) {
             return false;
         }
 
         $previousIsNamespaceSeparator = false;
         $prevIndex = $tokens->getPrevMeaningfulToken($index);
 
-        if ($tokens[$prevIndex]->isGivenKind(T_NS_SEPARATOR)) {
+        if ($tokens[$prevIndex]->isGivenKind(\T_NS_SEPARATOR)) {
             $previousIsNamespaceSeparator = true;
             $prevIndex = $tokens->getPrevMeaningfulToken($prevIndex);
         }
 
-        $possibleKind = array_merge([T_DOUBLE_COLON, T_FUNCTION, CT::T_NAMESPACE_OPERATOR, T_NEW, CT::T_RETURN_REF, T_STRING], Token::getObjectOperatorKinds());
-
-        // @TODO: drop condition when PHP 8.0+ is required
-        if (\defined('T_ATTRIBUTE')) {
-            $possibleKind[] = T_ATTRIBUTE;
+        if ($tokens[$prevIndex]->isGivenKind(self::POSSIBLE_KINDS)) {
+            return false;
         }
 
-        if ($tokens[$prevIndex]->isGivenKind($possibleKind)) {
+        if ($tokens[$tokens->getNextMeaningfulToken($openParenthesisIndex)]->isGivenKind(CT::T_FIRST_CLASS_CALLABLE)) {
             return false;
         }
 
@@ -71,55 +72,61 @@ final class FunctionsAnalyzer
             return true;
         }
 
+        $functionName = strtolower($tokens[$index]->getContent());
+
+        if ('set' === $functionName) {
+            if (!$tokens[$prevIndex]->equalsAny([[CT::T_PROPERTY_HOOK_BRACE_OPEN], ';', '}'])) {
+                return true;
+            }
+            $closeParenthesisIndex = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $openParenthesisIndex);
+            $afterCloseParenthesisIndex = $tokens->getNextMeaningfulToken($closeParenthesisIndex);
+            if ($tokens[$afterCloseParenthesisIndex]->equalsAny(['{', [\T_DOUBLE_ARROW]])) {
+                return false;
+            }
+        }
+
         if ($tokens->isChanged() || $tokens->getCodeHash() !== $this->functionsAnalysis['tokens']) {
             $this->buildFunctionsAnalysis($tokens);
         }
 
         // figure out in which namespace we are
-        $namespaceAnalyzer = new NamespacesAnalyzer();
-
-        $declarations = $namespaceAnalyzer->getDeclarations($tokens);
         $scopeStartIndex = 0;
         $scopeEndIndex = \count($tokens) - 1;
         $inGlobalNamespace = false;
 
-        foreach ($declarations as $declaration) {
+        foreach ($tokens->getNamespaceDeclarations() as $declaration) {
             $scopeStartIndex = $declaration->getScopeStartIndex();
             $scopeEndIndex = $declaration->getScopeEndIndex();
 
             if ($index >= $scopeStartIndex && $index <= $scopeEndIndex) {
-                $inGlobalNamespace = '' === $declaration->getFullName();
+                $inGlobalNamespace = $declaration->isGlobalNamespace();
 
                 break;
             }
         }
-
-        $call = strtolower($tokens[$index]->getContent());
 
         // check if the call is to a function declared in the same namespace as the call is done,
         // if the call is already in the global namespace than declared functions are in the same
         // global namespace and don't need checking
 
         if (!$inGlobalNamespace) {
-            /** @var int $functionNameIndex */
             foreach ($this->functionsAnalysis['declarations'] as $functionNameIndex) {
                 if ($functionNameIndex < $scopeStartIndex || $functionNameIndex > $scopeEndIndex) {
                     continue;
                 }
 
-                if (strtolower($tokens[$functionNameIndex]->getContent()) === $call) {
+                if (strtolower($tokens[$functionNameIndex]->getContent()) === $functionName) {
                     return false;
                 }
             }
         }
 
-        /** @var NamespaceUseAnalysis $functionUse */
         foreach ($this->functionsAnalysis['imports'] as $functionUse) {
             if ($functionUse->getStartIndex() < $scopeStartIndex || $functionUse->getEndIndex() > $scopeEndIndex) {
                 continue;
             }
 
-            if ($call !== strtolower($functionUse->getShortName())) {
+            if ($functionName !== strtolower($functionUse->getShortName())) {
                 continue;
             }
 
@@ -127,17 +134,19 @@ final class FunctionsAnalyzer
             return $functionUse->getShortName() === ltrim($functionUse->getFullName(), '\\');
         }
 
+        if (AttributeAnalyzer::isAttribute($tokens, $index)) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * @param int $methodIndex
-     *
-     * @return ArgumentAnalysis[]
+     * @return array<string, ArgumentAnalysis>
      */
-    public function getFunctionArguments(Tokens $tokens, $methodIndex)
+    public function getFunctionArguments(Tokens $tokens, int $functionIndex): array
     {
-        $argumentsStart = $tokens->getNextTokenOfKind($methodIndex, ['(']);
+        $argumentsStart = $tokens->getNextTokenOfKind($functionIndex, ['(']);
         $argumentsEnd = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $argumentsStart);
         $argumentAnalyzer = new ArgumentsAnalyzer();
         $arguments = [];
@@ -150,12 +159,7 @@ final class FunctionsAnalyzer
         return $arguments;
     }
 
-    /**
-     * @param int $methodIndex
-     *
-     * @return null|TypeAnalysis
-     */
-    public function getFunctionReturnType(Tokens $tokens, $methodIndex)
+    public function getFunctionReturnType(Tokens $tokens, int $methodIndex): ?TypeAnalysis
     {
         $argumentsStart = $tokens->getNextTokenOfKind($methodIndex, ['(']);
         $argumentsEnd = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $argumentsStart);
@@ -168,7 +172,7 @@ final class FunctionsAnalyzer
         $type = '';
         $typeStartIndex = $tokens->getNextMeaningfulToken($typeColonIndex);
         $typeEndIndex = $typeStartIndex;
-        $functionBodyStart = $tokens->getNextTokenOfKind($typeColonIndex, ['{', ';', [T_DOUBLE_ARROW]]);
+        $functionBodyStart = $tokens->getNextTokenOfKind($typeColonIndex, ['{', ';', [\T_DOUBLE_ARROW]]);
 
         for ($i = $typeStartIndex; $i < $functionBodyStart; ++$i) {
             if ($tokens[$i]->isWhitespace() || $tokens[$i]->isComment()) {
@@ -182,15 +186,10 @@ final class FunctionsAnalyzer
         return new TypeAnalysis($type, $typeStartIndex, $typeEndIndex);
     }
 
-    /**
-     * @param int $index
-     *
-     * @return bool
-     */
-    public function isTheSameClassCall(Tokens $tokens, $index)
+    public function isTheSameClassCall(Tokens $tokens, int $index): bool
     {
         if (!$tokens->offsetExists($index)) {
-            return false;
+            throw new \InvalidArgumentException(\sprintf('Token index %d does not exist.', $index));
         }
 
         $operatorIndex = $tokens->getPrevMeaningfulToken($index);
@@ -199,7 +198,7 @@ final class FunctionsAnalyzer
             return false;
         }
 
-        if (!$tokens[$operatorIndex]->isObjectOperator() && !$tokens[$operatorIndex]->isGivenKind(T_DOUBLE_COLON)) {
+        if (!$tokens[$operatorIndex]->isObjectOperator() && !$tokens[$operatorIndex]->isGivenKind(\T_DOUBLE_COLON)) {
             return false;
         }
 
@@ -209,10 +208,14 @@ final class FunctionsAnalyzer
             return false;
         }
 
-        return $tokens[$referenceIndex]->equalsAny([[T_VARIABLE, '$this'], [T_STRING, 'self'], [T_STATIC, 'static']], false);
+        if (!$tokens[$referenceIndex]->equalsAny([[\T_VARIABLE, '$this'], [\T_STRING, 'self'], [\T_STATIC, 'static']], false)) {
+            return false;
+        }
+
+        return $tokens[$tokens->getNextMeaningfulToken($index)]->equals('(');
     }
 
-    private function buildFunctionsAnalysis(Tokens $tokens)
+    private function buildFunctionsAnalysis(Tokens $tokens): void
     {
         $this->functionsAnalysis = [
             'tokens' => $tokens->getCodeHash(),
@@ -222,7 +225,7 @@ final class FunctionsAnalyzer
 
         // find declarations
 
-        if ($tokens->isTokenKindFound(T_FUNCTION)) {
+        if ($tokens->isTokenKindFound(\T_FUNCTION)) {
             $end = \count($tokens);
 
             for ($i = 0; $i < $end; ++$i) {
@@ -240,7 +243,7 @@ final class FunctionsAnalyzer
                     continue;
                 }
 
-                if (!$tokens[$i]->isGivenKind(T_FUNCTION)) {
+                if (!$tokens[$i]->isGivenKind(\T_FUNCTION)) {
                     continue;
                 }
 
@@ -250,7 +253,7 @@ final class FunctionsAnalyzer
                     $i = $tokens->getNextMeaningfulToken($i);
                 }
 
-                if (!$tokens[$i]->isGivenKind(T_STRING)) {
+                if (!$tokens[$i]->isGivenKind(\T_STRING)) {
                     continue;
                 }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -13,17 +15,25 @@
 namespace PhpCsFixer\FixerConfiguration;
 
 /**
+ * @readonly
+ *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class AllowedValueSubset
 {
     /**
-     * @var array
+     * @var non-empty-list<string>
      */
-    private $allowedValues;
+    private array $allowedValues;
 
+    /**
+     * @param non-empty-list<string> $allowedValues
+     */
     public function __construct(array $allowedValues)
     {
+        sort($allowedValues, \SORT_FLAG_CASE | \SORT_STRING);
         $this->allowedValues = $allowedValues;
     }
 
@@ -31,10 +41,8 @@ final class AllowedValueSubset
      * Checks whether the given values are a subset of the allowed ones.
      *
      * @param mixed $values the value to validate
-     *
-     * @return bool
      */
-    public function __invoke($values)
+    public function __invoke($values): bool
     {
         if (!\is_array($values)) {
             return false;
@@ -49,7 +57,10 @@ final class AllowedValueSubset
         return true;
     }
 
-    public function getAllowedValues()
+    /**
+     * @return non-empty-list<string>
+     */
+    public function getAllowedValues(): array
     {
         return $this->allowedValues;
     }

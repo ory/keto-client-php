@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,11 +16,13 @@ namespace PhpCsFixer\Console\SelfUpdate;
 
 /**
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 interface GithubClientInterface
 {
     /**
-     * @return array
+     * @return list<string>
      */
-    public function getTags();
+    public function getTags(): array;
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,34 +17,23 @@ namespace PhpCsFixer\Fixer\FunctionNotation;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Preg;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
 /**
  * @author Kuba Werłos <werlos@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class SingleLineThrowFixer extends AbstractFixer
 {
-    /**
-     * @internal
-     */
-    const REMOVE_WHITESPACE_AFTER_TOKENS = ['['];
+    private const REMOVE_WHITESPACE_AFTER_TOKENS = ['['];
+    private const REMOVE_WHITESPACE_AROUND_TOKENS = ['(', [\T_DOUBLE_COLON]];
+    private const REMOVE_WHITESPACE_BEFORE_TOKENS = [')', ']', ',', ';'];
 
-    /**
-     * @internal
-     */
-    const REMOVE_WHITESPACE_AROUND_TOKENS = ['(', [T_DOUBLE_COLON]];
-
-    /**
-     * @internal
-     */
-    const REMOVE_WHITESPACE_BEFORE_TOKENS = [')',  ']', ',', ';'];
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getDefinition()
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'Throwing exception must be done in single line.',
@@ -52,12 +43,9 @@ final class SingleLineThrowFixer extends AbstractFixer
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isTokenKindFound(T_THROW);
+        return $tokens->isTokenKindFound(\T_THROW);
     }
 
     /**
@@ -65,31 +53,31 @@ final class SingleLineThrowFixer extends AbstractFixer
      *
      * Must run before BracesFixer, ConcatSpaceFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 36;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         for ($index = 0, $count = $tokens->count(); $index < $count; ++$index) {
-            if (!$tokens[$index]->isGivenKind(T_THROW)) {
+            if (!$tokens[$index]->isGivenKind(\T_THROW)) {
                 continue;
             }
 
             $endCandidateIndex = $tokens->getNextMeaningfulToken($index);
 
-            while (!$tokens[$endCandidateIndex]->equalsAny([')',  ']', ',', ';'])) {
+            while (!$tokens[$endCandidateIndex]->equalsAny([')', ']', ',', ';', [\T_CLOSE_TAG]])) {
                 $blockType = Tokens::detectBlockType($tokens[$endCandidateIndex]);
+
                 if (null !== $blockType) {
-                    if (Tokens::BLOCK_TYPE_CURLY_BRACE === $blockType['type']) {
+                    if (Tokens::BLOCK_TYPE_CURLY_BRACE === $blockType['type'] || !$blockType['isStart']) {
                         break;
                     }
+
                     $endCandidateIndex = $tokens->findBlockEnd($blockType['type'], $endCandidateIndex);
                 }
+
                 $endCandidateIndex = $tokens->getNextMeaningfulToken($endCandidateIndex);
             }
 
@@ -97,36 +85,32 @@ final class SingleLineThrowFixer extends AbstractFixer
         }
     }
 
-    /**
-     * @param int $startIndex
-     * @param int $endIndex
-     */
-    private function trimNewLines(Tokens $tokens, $startIndex, $endIndex)
+    private function trimNewLines(Tokens $tokens, int $startIndex, int $endIndex): void
     {
         for ($index = $startIndex; $index < $endIndex; ++$index) {
             $content = $tokens[$index]->getContent();
 
-            if ($tokens[$index]->isGivenKind(T_COMMENT)) {
-                if (0 === strpos($content, '//')) {
+            if ($tokens[$index]->isGivenKind(\T_COMMENT)) {
+                if (str_starts_with($content, '//')) {
                     $content = '/*'.substr($content, 2).' */';
                     $tokens->clearAt($index + 1);
-                } elseif (0 === strpos($content, '#')) {
+                } elseif (str_starts_with($content, '#')) {
                     $content = '/*'.substr($content, 1).' */';
                     $tokens->clearAt($index + 1);
-                } elseif (false !== Preg::match('/\R/', $content)) {
+                } elseif (Preg::match('/\R/', $content)) {
                     $content = Preg::replace('/\R/', ' ', $content);
                 }
 
-                $tokens[$index] = new Token([T_COMMENT, $content]);
+                $tokens[$index] = new Token([\T_COMMENT, $content]);
 
                 continue;
             }
 
-            if (!$tokens[$index]->isGivenKind(T_WHITESPACE)) {
+            if (!$tokens[$index]->isGivenKind(\T_WHITESPACE)) {
                 continue;
             }
 
-            if (0 === Preg::match('/\R/', $content)) {
+            if (!Preg::match('/\R/', $content)) {
                 continue;
             }
 
@@ -142,42 +126,24 @@ final class SingleLineThrowFixer extends AbstractFixer
 
             if (
                 $this->isNextTokenToClear($tokens[$nextIndex])
-                && !$tokens[$prevIndex]->isGivenKind(T_FUNCTION)
+                && !$tokens[$prevIndex]->isGivenKind(\T_FUNCTION)
             ) {
                 $tokens->clearAt($index);
 
                 continue;
             }
 
-            $tokens[$index] = new Token([T_WHITESPACE, ' ']);
+            $tokens[$index] = new Token([\T_WHITESPACE, ' ']);
         }
     }
 
-    /**
-     * @return bool
-     */
-    private function isPreviousTokenToClear(Token $token)
+    private function isPreviousTokenToClear(Token $token): bool
     {
-        static $tokens = null;
-
-        if (null === $tokens) {
-            $tokens = array_merge(self::REMOVE_WHITESPACE_AFTER_TOKENS, self::REMOVE_WHITESPACE_AROUND_TOKENS);
-        }
-
-        return $token->equalsAny($tokens) || $token->isObjectOperator();
+        return $token->equalsAny([...self::REMOVE_WHITESPACE_AFTER_TOKENS, ...self::REMOVE_WHITESPACE_AROUND_TOKENS]) || $token->isObjectOperator();
     }
 
-    /**
-     * @return bool
-     */
-    private function isNextTokenToClear(Token $token)
+    private function isNextTokenToClear(Token $token): bool
     {
-        static $tokens = null;
-
-        if (null === $tokens) {
-            $tokens = array_merge(self::REMOVE_WHITESPACE_AROUND_TOKENS, self::REMOVE_WHITESPACE_BEFORE_TOKENS);
-        }
-
-        return $token->equalsAny($tokens) || $token->isObjectOperator();
+        return $token->equalsAny([...self::REMOVE_WHITESPACE_AROUND_TOKENS, ...self::REMOVE_WHITESPACE_BEFORE_TOKENS]) || $token->isObjectOperator();
     }
 }

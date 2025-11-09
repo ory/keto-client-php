@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -12,48 +14,46 @@
 
 namespace PhpCsFixer\FixerConfiguration;
 
-use PhpCsFixer\Utils;
+use PhpCsFixer\Future;
+use PhpCsFixer\Preg;
 use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+/**
+ * @readonly
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
+ */
 final class FixerConfigurationResolver implements FixerConfigurationResolverInterface
 {
     /**
-     * @var FixerOptionInterface[]
+     * @var list<FixerOptionInterface>
+     *
+     * @readonly
      */
-    private $options = [];
-
-    /**
-     * @var string[]
-     */
-    private $registeredNames = [];
+    private array $options;
 
     /**
      * @param iterable<FixerOptionInterface> $options
      */
-    public function __construct($options)
+    public function __construct(iterable $options)
     {
-        foreach ($options as $option) {
-            $this->addOption($option);
-        }
+        $fixerOptionSorter = new FixerOptionSorter();
+        $this->validateOptions($options);
 
-        if (empty($this->registeredNames)) {
+        $this->options = $fixerOptionSorter->sort($options);
+
+        if (0 === \count($this->options)) {
             throw new \LogicException('Options cannot be empty.');
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getOptions()
+    public function getOptions(): array
     {
         return $this->options;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function resolve(array $options)
+    public function resolve(array $configuration): array
     {
         $resolver = new OptionsResolver();
 
@@ -63,19 +63,19 @@ final class FixerConfigurationResolver implements FixerConfigurationResolverInte
             if ($option instanceof AliasedFixerOption) {
                 $alias = $option->getAlias();
 
-                if (\array_key_exists($alias, $options)) {
-                    if (\array_key_exists($name, $options)) {
-                        throw new InvalidOptionsException(sprintf('Aliased option "%s"/"%s" is passed multiple times.', $name, $alias));
+                if (\array_key_exists($alias, $configuration)) {
+                    if (\array_key_exists($name, $configuration)) {
+                        throw new InvalidOptionsException(\sprintf('Aliased option "%s"/"%s" is passed multiple times.', $name, $alias));
                     }
 
-                    Utils::triggerDeprecation(new \RuntimeException(sprintf(
+                    Future::triggerDeprecation(new \RuntimeException(\sprintf(
                         'Option "%s" is deprecated, use "%s" instead.',
                         $alias,
                         $name
                     )));
 
-                    $options[$name] = $options[$alias];
-                    unset($options[$alias]);
+                    $configuration[$name] = $configuration[$alias];
+                    unset($configuration[$alias]);
                 }
             }
 
@@ -89,9 +89,7 @@ final class FixerConfigurationResolver implements FixerConfigurationResolverInte
             if (null !== $allowedValues) {
                 foreach ($allowedValues as &$allowedValue) {
                     if (\is_object($allowedValue) && \is_callable($allowedValue)) {
-                        $allowedValue = static function ($values) use ($allowedValue) {
-                            return $allowedValue($values);
-                        };
+                        $allowedValue = static fn (/* mixed */ $values) => $allowedValue($values);
                     }
                 }
 
@@ -100,7 +98,29 @@ final class FixerConfigurationResolver implements FixerConfigurationResolverInte
 
             $allowedTypes = $option->getAllowedTypes();
             if (null !== $allowedTypes) {
-                $resolver->setAllowedTypes($name, $allowedTypes);
+                $allowedTypesNormalised = array_map(
+                    static function (string $type): string {
+                        // Symfony OptionsResolver doesn't support `array<foo, bar>` natively, let's simplify the type
+                        $matches = [];
+                        if (true === Preg::match('/array<\w+,\s*(\??[\w\'|]+)>/', $type, $matches)) {
+                            if ('?' === $matches[1][0]) {
+                                return 'array';
+                            }
+
+                            if ("'" === $matches[1][0]) {
+                                return 'string[]';
+                            }
+
+                            return $matches[1].'[]';
+                        }
+
+                        // Symfony OptionsResolver doesn't support 'class-string' natively, let's simplify the type
+                        return str_replace('class-string', 'string', $type);
+                    },
+                    $allowedTypes,
+                );
+
+                $resolver->setAllowedTypes($name, $allowedTypesNormalised);
             }
 
             $normalizer = $option->getNormalizer();
@@ -109,25 +129,26 @@ final class FixerConfigurationResolver implements FixerConfigurationResolverInte
             }
         }
 
-        return $resolver->resolve($options);
+        return $resolver->resolve($configuration);
     }
 
     /**
-     * @throws \LogicException when the option is already defined
+     * @param iterable<FixerOptionInterface> $options
      *
-     * @return $this
+     * @throws \LogicException when the option is already defined
      */
-    private function addOption(FixerOptionInterface $option)
+    private function validateOptions(iterable $options): void
     {
-        $name = $option->getName();
+        $names = [];
 
-        if (\in_array($name, $this->registeredNames, true)) {
-            throw new \LogicException(sprintf('The "%s" option is defined multiple times.', $name));
+        foreach ($options as $option) {
+            $name = $option->getName();
+
+            if (\in_array($name, $names, true)) {
+                throw new \LogicException(\sprintf('The "%s" option is defined multiple times.', $name));
+            }
+
+            $names[] = $name;
         }
-
-        $this->options[] = $option;
-        $this->registeredNames[] = $name;
-
-        return $this;
     }
 }

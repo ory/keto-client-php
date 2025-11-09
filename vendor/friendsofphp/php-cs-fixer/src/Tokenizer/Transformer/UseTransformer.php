@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,6 +16,7 @@ namespace PhpCsFixer\Tokenizer\Transformer;
 
 use PhpCsFixer\Tokenizer\AbstractTransformer;
 use PhpCsFixer\Tokenizer\CT;
+use PhpCsFixer\Tokenizer\FCT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -25,32 +28,27 @@ use PhpCsFixer\Tokenizer\Tokens;
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  *
  * @internal
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class UseTransformer extends AbstractTransformer
 {
-    /**
-     * {@inheritdoc}
-     */
-    public function getPriority()
+    private const CLASS_TYPES = [\T_TRAIT, FCT::T_ENUM];
+
+    public function getPriority(): int
     {
         // Should run after CurlyBraceTransformer and before TypeColonTransformer
         return -5;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getRequiredPhpVersionId()
+    public function getRequiredPhpVersionId(): int
     {
-        return 50300;
+        return 5_03_00;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function process(Tokens $tokens, Token $token, $index)
+    public function process(Tokens $tokens, Token $token, int $index): void
     {
-        if ($token->isGivenKind(T_USE) && $this->isUseForLambda($tokens, $index)) {
+        if ($token->isGivenKind(\T_USE) && $this->isUseForLambda($tokens, $index)) {
             $tokens[$index] = new Token([CT::T_USE_LAMBDA, $token->getContent()]);
 
             return;
@@ -59,11 +57,11 @@ final class UseTransformer extends AbstractTransformer
         // Only search inside class/trait body for `T_USE` for traits.
         // Cannot import traits inside interfaces or anywhere else
 
-        if (!$token->isGivenKind([T_CLASS, T_TRAIT])) {
-            return;
-        }
-
-        if ($tokens[$tokens->getPrevMeaningfulToken($index)]->isGivenKind(T_DOUBLE_COLON)) {
+        if ($token->isGivenKind(\T_CLASS)) {
+            if ($tokens[$tokens->getPrevMeaningfulToken($index)]->isGivenKind(\T_DOUBLE_COLON)) {
+                return;
+            }
+        } elseif (!$token->isGivenKind(self::CLASS_TYPES)) {
             return;
         }
 
@@ -73,7 +71,7 @@ final class UseTransformer extends AbstractTransformer
         while ($index < $innerLimit) {
             $token = $tokens[++$index];
 
-            if (!$token->isGivenKind(T_USE)) {
+            if (!$token->isGivenKind(\T_USE)) {
                 continue;
             }
 
@@ -85,22 +83,15 @@ final class UseTransformer extends AbstractTransformer
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getCustomTokens()
+    public function getCustomTokens(): array
     {
         return [CT::T_USE_TRAIT, CT::T_USE_LAMBDA];
     }
 
     /**
      * Check if token under given index is `use` statement for lambda function.
-     *
-     * @param int $index
-     *
-     * @return bool
      */
-    private function isUseForLambda(Tokens $tokens, $index)
+    private function isUseForLambda(Tokens $tokens, int $index): bool
     {
         $nextToken = $tokens[$tokens->getNextMeaningfulToken($index)];
 

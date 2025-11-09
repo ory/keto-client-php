@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -14,13 +16,15 @@ namespace PhpCsFixer\Fixer;
 
 /**
  * @author Kuba Werłos <werlos@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 interface DeprecatedFixerInterface extends FixerInterface
 {
     /**
      * Returns names of fixers to use instead, if any.
      *
-     * @return string[]
+     * @return list<string>
      */
-    public function getSuccessorsNames();
+    public function getSuccessorsNames(): array;
 }

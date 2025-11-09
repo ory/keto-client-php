@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of PHP CS Fixer.
  *
@@ -15,6 +17,7 @@ namespace PhpCsFixer\Fixer\FunctionNotation;
 use PhpCsFixer\AbstractFixer;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
+use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\CT;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -23,48 +26,57 @@ use PhpCsFixer\Tokenizer\Tokens;
  *
  * @author Varga Bence <vbence@czentral.org>
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise.
  */
 final class NoSpacesAfterFunctionNameFixer extends AbstractFixer
 {
     /**
-     * {@inheritdoc}
+     * Token kinds which can work as function calls.
      */
-    public function getDefinition()
+    private const FUNCTIONY_TOKEN_KINDS = [
+        \T_ARRAY,
+        \T_ECHO,
+        \T_EMPTY,
+        \T_EVAL,
+        \T_EXIT,
+        \T_INCLUDE,
+        \T_INCLUDE_ONCE,
+        \T_ISSET,
+        \T_LIST,
+        \T_PRINT,
+        \T_REQUIRE,
+        \T_REQUIRE_ONCE,
+        \T_UNSET,
+        \T_VARIABLE,
+    ];
+
+    public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
             'When making a method or function call, there MUST NOT be a space between the method or function name and the opening parenthesis.',
-            [new CodeSample("<?php\nrequire ('sample.php');\necho (test (3));\nexit  (1);\n\$func ();\n")]
+            [new CodeSample("<?php\nstrlen ('Hello World!');\nfoo (test (3));\nexit  (1);\n\$func ();\n")]
         );
     }
 
     /**
      * {@inheritdoc}
      *
-     * Must run before FunctionToConstantFixer.
+     * Must run before FunctionToConstantFixer, GetClassToClassKeywordFixer.
      * Must run after PowToExponentiationFixer.
      */
-    public function getPriority()
+    public function getPriority(): int
     {
-        return 2;
+        return 3;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function isCandidate(Tokens $tokens)
+    public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isAnyTokenKindsFound(array_merge($this->getFunctionyTokenKinds(), [T_STRING]));
+        return $tokens->isAnyTokenKindsFound([\T_STRING, ...self::FUNCTIONY_TOKEN_KINDS]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function applyFix(\SplFileInfo $file, Tokens $tokens)
+    protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
-        $functionyTokens = $this->getFunctionyTokenKinds();
-        $languageConstructionTokens = $this->getLanguageConstructionTokenKinds();
-        $braceTypes = $this->getBraceAfterVariableKinds();
-
         foreach ($tokens as $index => $token) {
             // looking for start brace
             if (!$token->equals('(')) {
@@ -79,21 +91,33 @@ final class NoSpacesAfterFunctionNameFixer extends AbstractFixer
             $nextNonWhiteSpace = $tokens->getNextMeaningfulToken($endParenthesisIndex);
             if (
                 null !== $nextNonWhiteSpace
-                && $tokens[$nextNonWhiteSpace]->equals('?')
-                && $tokens[$lastTokenIndex]->isGivenKind($languageConstructionTokens)
+                && !$tokens[$nextNonWhiteSpace]->equals(';')
+                && $tokens[$lastTokenIndex]->isGivenKind([
+                    \T_ECHO,
+                    \T_PRINT,
+                    \T_INCLUDE,
+                    \T_INCLUDE_ONCE,
+                    \T_REQUIRE,
+                    \T_REQUIRE_ONCE,
+                ])
             ) {
                 continue;
             }
 
             // check if it is a function call
-            if ($tokens[$lastTokenIndex]->isGivenKind($functionyTokens)) {
+            if ($tokens[$lastTokenIndex]->isGivenKind(self::FUNCTIONY_TOKEN_KINDS)) {
                 $this->fixFunctionCall($tokens, $index);
-            } elseif ($tokens[$lastTokenIndex]->isGivenKind(T_STRING)) { // for real function calls or definitions
+            } elseif ($tokens[$lastTokenIndex]->isGivenKind(\T_STRING)) { // for real function calls or definitions
                 $possibleDefinitionIndex = $tokens->getPrevMeaningfulToken($lastTokenIndex);
-                if (!$tokens[$possibleDefinitionIndex]->isGivenKind(T_FUNCTION)) {
+                if (!$tokens[$possibleDefinitionIndex]->isGivenKind(\T_FUNCTION)) {
                     $this->fixFunctionCall($tokens, $index);
                 }
-            } elseif ($tokens[$lastTokenIndex]->equalsAny($braceTypes)) {
+            } elseif ($tokens[$lastTokenIndex]->equalsAny([
+                ')',
+                ']',
+                [CT::T_DYNAMIC_VAR_BRACE_CLOSE],
+                [CT::T_ARRAY_INDEX_CURLY_BRACE_CLOSE],
+            ])) {
                 $block = Tokens::detectBlockType($tokens[$lastTokenIndex]);
                 if (
                     Tokens::BLOCK_TYPE_ARRAY_INDEX_CURLY_BRACE === $block['type']
@@ -113,72 +137,11 @@ final class NoSpacesAfterFunctionNameFixer extends AbstractFixer
      * @param Tokens $tokens tokens to handle
      * @param int    $index  index of token
      */
-    private function fixFunctionCall(Tokens $tokens, $index)
+    private function fixFunctionCall(Tokens $tokens, int $index): void
     {
         // remove space before opening brace
         if ($tokens[$index - 1]->isWhitespace()) {
             $tokens->clearAt($index - 1);
         }
-    }
-
-    /**
-     * @return array<array|string>
-     */
-    private function getBraceAfterVariableKinds()
-    {
-        static $tokens = [
-            ')',
-            ']',
-            [CT::T_DYNAMIC_VAR_BRACE_CLOSE],
-            [CT::T_ARRAY_INDEX_CURLY_BRACE_CLOSE],
-        ];
-
-        return $tokens;
-    }
-
-    /**
-     * Gets the token kinds which can work as function calls.
-     *
-     * @return int[] Token names
-     */
-    private function getFunctionyTokenKinds()
-    {
-        static $tokens = [
-            T_ARRAY,
-            T_ECHO,
-            T_EMPTY,
-            T_EVAL,
-            T_EXIT,
-            T_INCLUDE,
-            T_INCLUDE_ONCE,
-            T_ISSET,
-            T_LIST,
-            T_PRINT,
-            T_REQUIRE,
-            T_REQUIRE_ONCE,
-            T_UNSET,
-            T_VARIABLE,
-        ];
-
-        return $tokens;
-    }
-
-    /**
-     * Gets the token kinds of actually language construction.
-     *
-     * @return int[]
-     */
-    private function getLanguageConstructionTokenKinds()
-    {
-        static $languageConstructionTokens = [
-            T_ECHO,
-            T_PRINT,
-            T_INCLUDE,
-            T_INCLUDE_ONCE,
-            T_REQUIRE,
-            T_REQUIRE_ONCE,
-        ];
-
-        return $languageConstructionTokens;
     }
 }
